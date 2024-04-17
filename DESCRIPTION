@@ -9,6 +9,7 @@ Imports:
     bslib,
     config (>= 0.3.2),
     golem (>= 0.4.1),
+    plotly,
     shiny (>= 1.8.1)
 Suggests: 
     spelling,

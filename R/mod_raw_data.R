@@ -29,8 +29,21 @@ mod_raw_data_ui <- function(id){
                       choices = c("Level", "Turbidity"))
         )
       )
-    )
+      ### UI DEV TOOLS ####
 
+      # fluidRow(
+      #   column(
+      #     width = 4,
+      #     actionButton(ns("browser"), "browser")
+      #   ),
+      #   column(
+      #     width = 8,
+      #     verbatimTextOutput(ns("printcheck"))
+      #   )
+      # ) # fluidRow DEV TOOLS
+
+      ### END DEV TOOLS
+    )
   )
 }
 
@@ -40,6 +53,22 @@ mod_raw_data_ui <- function(id){
 mod_raw_data_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+
+    ### DEV TOOLS ####
+    output$printcheck = renderPrint({
+      tryCatch({
+        # event_data("plotly_hover")
+        print(input$exploremap_center)
+        print("exists")
+      },
+      shiny.silent.error = function(e) {
+        print("doesn't exist")
+      }
+      )
+    })
+    observeEvent(input$browser, {
+      browser()
+    })
 
   })
 }
