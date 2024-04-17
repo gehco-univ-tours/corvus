@@ -8,9 +8,12 @@ License: GPL (>= 3)
 Imports: 
     bslib,
     config (>= 0.3.2),
+    dplyr,
     golem (>= 0.4.1),
+    magrittr,
     plotly,
-    shiny (>= 1.8.1)
+    shiny (>= 1.8.1),
+    utils
 Suggests: 
     spelling,
     testthat (>= 3.0.0)
