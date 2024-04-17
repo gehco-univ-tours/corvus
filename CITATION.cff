@@ -1,15 +1,175 @@
+# --------------------------------------------
+# CITATION file created with {cffr} R package
+# See also: https://docs.ropensci.org/cffr/
+# --------------------------------------------
+ 
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
-authors:
-  - family-names: Manière
-    given-names: Louis
-    orcid: https://orcid.org/0000-0003-0426-2975
-    affiliation: "University of Tours - Geohydrosystèmes Continentaux (GeHCO)"
-title: "louroux"
+message: 'To cite package "louroux" in publications use:'
+type: software
+license: GPL-3.0-or-later
+title: 'louroux: Louroux'
 version: 0.0.0.9000
-repository-code: "https://github.com/LouisManiere/louroux"
-license: GPL-3.0 license
-identifiers:
-  - type:
-    value:
-date-released: 2024-04-17
+abstract: Louroux data processing.
+authors:
+- family-names: Manière
+  given-names: Louis
+  email: louis.maniere@univ-tours.fr
+contact:
+- family-names: Manière
+  given-names: Louis
+  email: louis.maniere@univ-tours.fr
+references:
+- type: software
+  title: bslib
+  abstract: 'bslib: Custom ''Bootstrap'' ''Sass'' Themes for ''shiny'' and ''rmarkdown'''
+  notes: Imports
+  url: https://rstudio.github.io/bslib/
+  repository: https://CRAN.R-project.org/package=bslib
+  authors:
+  - family-names: Sievert
+    given-names: Carson
+    email: carson@posit.co
+    orcid: https://orcid.org/0000-0002-4958-2844
+  - family-names: Cheng
+    given-names: Joe
+    email: joe@posit.co
+  - family-names: Aden-Buie
+    given-names: Garrick
+    email: garrick@posit.co
+    orcid: https://orcid.org/0000-0002-7111-0077
+  year: '2024'
+- type: software
+  title: config
+  abstract: 'config: Manage Environment Specific Configuration Values'
+  notes: Imports
+  url: https://rstudio.github.io/config/
+  repository: https://CRAN.R-project.org/package=config
+  authors:
+  - family-names: Allaire
+    given-names: JJ
+    email: jj@rstudio.com
+  year: '2024'
+  version: '>= 0.3.2'
+- type: software
+  title: golem
+  abstract: 'golem: A Framework for Robust Shiny Applications'
+  notes: Imports
+  url: https://github.com/ThinkR-open/golem
+  repository: https://CRAN.R-project.org/package=golem
+  authors:
+  - family-names: Fay
+    given-names: Colin
+    email: contact@colinfay.me
+    orcid: https://orcid.org/0000-0001-7343-1846
+  - family-names: Guyader
+    given-names: Vincent
+    email: vincent@thinkr.fr
+    orcid: https://orcid.org/0000-0003-0671-9270
+  - family-names: Rochette
+    given-names: Sébastien
+    email: sebastien@thinkr.fr
+    orcid: https://orcid.org/0000-0002-1565-9313
+  - family-names: Girard
+    given-names: Cervan
+    email: cervan@thinkr.fr
+    orcid: https://orcid.org/0000-0002-4816-4624
+  year: '2024'
+  version: '>= 0.4.1'
+- type: software
+  title: plotly
+  abstract: 'plotly: Create Interactive Web Graphics via ''plotly.js'''
+  notes: Imports
+  url: https://plotly-r.com
+  repository: https://CRAN.R-project.org/package=plotly
+  authors:
+  - family-names: Sievert
+    given-names: Carson
+    email: cpsievert1@gmail.com
+    orcid: https://orcid.org/0000-0002-4958-2844
+  - family-names: Parmer
+    given-names: Chris
+    email: chris@plot.ly
+  - family-names: Hocking
+    given-names: Toby
+    email: tdhock5@gmail.com
+  - family-names: Chamberlain
+    given-names: Scott
+    email: myrmecocystus@gmail.com
+  - family-names: Ram
+    given-names: Karthik
+    email: karthik.ram@gmail.com
+  - family-names: Corvellec
+    given-names: Marianne
+    email: marianne.corvellec@igdore.org
+    orcid: https://orcid.org/0000-0002-1994-3581
+  - family-names: Despouy
+    given-names: Pedro
+    email: pedro@plot.ly
+  year: '2024'
+- type: software
+  title: shiny
+  abstract: 'shiny: Web Application Framework for R'
+  notes: Imports
+  url: https://shiny.posit.co/
+  repository: https://CRAN.R-project.org/package=shiny
+  authors:
+  - family-names: Chang
+    given-names: Winston
+    email: winston@posit.co
+    orcid: https://orcid.org/0000-0002-1576-2126
+  - family-names: Cheng
+    given-names: Joe
+    email: joe@posit.co
+  - family-names: Allaire
+    given-names: JJ
+    email: jj@posit.co
+  - family-names: Sievert
+    given-names: Carson
+    email: carson@posit.co
+    orcid: https://orcid.org/0000-0002-4958-2844
+  - family-names: Schloerke
+    given-names: Barret
+    email: barret@posit.co
+    orcid: https://orcid.org/0000-0001-9986-114X
+  - family-names: Xie
+    given-names: Yihui
+    email: yihui@posit.co
+  - family-names: Allen
+    given-names: Jeff
+  - family-names: McPherson
+    given-names: Jonathan
+    email: jonathan@posit.co
+  - family-names: Dipert
+    given-names: Alan
+  - family-names: Borges
+    given-names: Barbara
+  year: '2024'
+  version: '>= 1.8.1'
+- type: software
+  title: spelling
+  abstract: 'spelling: Tools for Spell Checking in R'
+  notes: Suggests
+  url: https://ropensci.r-universe.dev/spelling
+  repository: https://CRAN.R-project.org/package=spelling
+  authors:
+  - family-names: Ooms
+    given-names: Jeroen
+    email: jeroen@berkeley.edu
+    orcid: https://orcid.org/0000-0002-4035-0289
+  - family-names: Hester
+    given-names: Jim
+    email: james.hester@rstudio.com
+  year: '2024'
+- type: software
+  title: testthat
+  abstract: 'testthat: Unit Testing for R'
+  notes: Suggests
+  url: https://testthat.r-lib.org
+  repository: https://CRAN.R-project.org/package=testthat
+  authors:
+  - family-names: Wickham
+    given-names: Hadley
+    email: hadley@posit.co
+  year: '2024'
+  version: '>= 3.0.0'
+

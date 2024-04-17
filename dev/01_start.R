@@ -45,6 +45,7 @@ devtools::build_readme()
 usethis::use_code_of_conduct(contact = "Golem User")
 usethis::use_lifecycle_badge("Experimental")
 usethis::use_news_md(open = FALSE)
+cffr::cff_write()
 
 ## Use git ----
 usethis::use_git()
