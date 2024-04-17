@@ -3,14 +3,21 @@
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
 #' @import shiny
+#' @importFrom bslib bs_theme
 #' @noRd
 app_ui <- function(request) {
   tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
-    # Your application UI logic
-    fluidPage(
-      h1("louroux")
+    navbarPage(
+      theme = bs_theme(version = 5, bootswatch = "simplex"),
+      title =
+        div(
+          img(src = "www/logo_gehco.png", height = 30, width = 35, style = "margin-right: 10px;"),
+          "Louroux",
+          style = "display: flex; float: left;"
+        ),
+      tabPanel("Raw data", mod_raw_data_ui("raw_data_1"))
     )
   )
 }
@@ -30,7 +37,7 @@ golem_add_external_resources <- function() {
   )
 
   tags$head(
-    favicon(),
+    favicon(ext = "png"),
     bundle_resources(
       path = app_sys("app/www"),
       app_title = "louroux"
