@@ -22,5 +22,4 @@ Manière, L. (2024). louroux (Version 0.0.0.9000) \[Computer software\].
 
 ## Licence
 
-This program is released under the [GNU Public License
-v3](https://github.com/LouisManiere/louroux/blob/main/LICENSE).
+This program is released under the GNU Public License v3.
