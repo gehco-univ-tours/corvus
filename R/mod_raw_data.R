@@ -27,6 +27,11 @@ mod_raw_data_ui <- function(id){
           selectInput(inputId = ns("parameter"),
                       label = "Parameter",
                       choices = c("Level", "Turbidity"))
+        ),
+        column(
+          width = 3,
+          actionButton(inputId = ns("apply"),
+                       label = "Apply")
         )
       )
       ### UI DEV TOOLS ####
@@ -69,6 +74,10 @@ mod_raw_data_server <- function(id){
     observeEvent(input$browser, {
       browser()
     })
+
+    ### EVENT ####
+
+
 
   })
 }
