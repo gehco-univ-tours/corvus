@@ -27,6 +27,7 @@ golem::add_module(name = "name_of_module2", with_test = TRUE) # Name of the modu
 ## Creates fct_* and utils_*
 golem::add_fct("plot", with_test = TRUE)
 golem::add_fct("compile", with_test = TRUE)
+golem::add_fct("db_conn", with_test = TRUE)
 golem::add_utils("helpers", with_test = TRUE)
 
 ## External resources

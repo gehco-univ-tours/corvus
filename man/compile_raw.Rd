@@ -16,7 +16,7 @@ compile_raw(station, parameter, append = FALSE, col_names = TRUE)
 \item{col_names}{logical: write column names}
 }
 \value{
-data frame
+string: message
 }
 \description{
 Compile raw data

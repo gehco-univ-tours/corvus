@@ -38,19 +38,25 @@ mod_raw_data_ui <- function(id){
           actionButton(inputId = ns("plot_raw_data"),
                        label = "Plot raw data")
         )
+      ),
+      fluidRow(
+        column(
+          width = 12,
+          verbatimTextOutput(ns("userinfo"))
+        )
       )
       ### UI DEV TOOLS ####
 
-      # fluidRow(
-      #   column(
-      #     width = 4,
-      #     actionButton(ns("browser"), "browser")
-      #   ),
-      #   column(
-      #     width = 8,
-      #     verbatimTextOutput(ns("printcheck"))
-      #   )
-      # ) # fluidRow DEV TOOLS
+      ,fluidRow(
+        column(
+          width = 4,
+          actionButton(ns("browser"), "browser")
+        ),
+        column(
+          width = 8,
+          verbatimTextOutput(ns("printcheck"))
+        )
+      ) # fluidRow DEV TOOLS
 
       ### END DEV TOOLS
     )
@@ -85,35 +91,51 @@ mod_raw_data_server <- function(id){
 
     r_locals <- reactiveValues(
       data = NULL,
-      plot = NULL
+      plot = NULL,
+      userinfo = "User information"
     )
 
     ### UI OUTPUT ####
+
+    #### plot ####
 
     output$plot <- renderPlotly({
       r_locals$plot
     })
 
+    #### userinfo ####
+    output$userinfo <- renderPrint({
+      r_locals$userinfo
+    })
+
     ### EVENT ####
 
-    #### Apply bttn ####
+    #### station ####
+
+    observeEvent(c(input$station, input$parameter), {
+      r_locals$data <- read.csv(system.file("ext_data", input$station, "raw_data", input$parameter,
+                                            paste0(input$station,"_", input$parameter, "_", "compile.csv"),
+                                            package = "louroux"),
+                                stringsAsFactors = FALSE,
+                                sep = ";",
+                                dec = ".")
+    })
+
+    #### Compile bttn ####
     observeEvent(input$compile, {
-      r_locals$data <- compile_raw(input$station, input$parameter)
+        temp <- compile_raw(input$station, input$parameter)
+        if (temp) {
+          r_locals$userinfo <- "Success"
+        } else {
+          r_locals$userinfo <- "Fail"
+        }
     })
 
     #### Plot bttn ####
     observeEvent(input$plot_raw_data, {
-      if (is.null(r_locals$data)){
-        r_locals$data <- read.csv(system.file("lrx_data", station, "raw_data", parameter,
-                                     paste0(station,"_",parameter, "_", "compile.csv"),
-                                     package = "louroux"),
-                                  stringsAsFactors = FALSE,
-                                  sep = ";",
-                                  dec = ".")
-      }
-      r_locals$plot <- plot_main(data = r_locals$data,
+      locals$plot <- plot_main(data = r_locals$data,
                                  y = input$parameter,
-                                 y_title = paste0(input$station , " ", input$parameter))
+                                 y_title = input$parameter)
     })
 
   })
