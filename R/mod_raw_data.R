@@ -20,7 +20,8 @@ mod_raw_data_ui <- function(id){
           width = 3,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = c("BE", "PI"))
+                      choices = c("BE" = "be",
+                                  "PI" = "pi"))
         ),
         column(
           width = 3,
@@ -92,7 +93,7 @@ mod_raw_data_server <- function(id){
     r_locals <- reactiveValues(
       data = NULL,
       plot = NULL,
-      userinfo = "User information"
+      userinfo = list("User information")
     )
 
     ### UI OUTPUT ####
@@ -110,31 +111,26 @@ mod_raw_data_server <- function(id){
 
     ### EVENT ####
 
-    #### station ####
-
-    observeEvent(c(input$station, input$parameter), {
-      r_locals$data <- read.csv(system.file("ext_data", input$station, "raw_data", input$parameter,
-                                            paste0(input$station,"_", input$parameter, "_", "compile.csv"),
-                                            package = "louroux"),
-                                stringsAsFactors = FALSE,
-                                sep = ";",
-                                dec = ".")
-    })
-
     #### Compile bttn ####
-    observeEvent(input$compile, {
-        temp <- compile_raw(input$station, input$parameter)
-        if (temp) {
-          r_locals$userinfo <- "Success"
+    observeEvent(input$compile_raw_data, {
+      r_locals$userinfo$processing = "Compiling raw data"
+        data <- compile_raw(con = db_con(),
+                            station = input$station,
+                            parameter = input$parameter)
+        if (!is.null(data)) {
+          r_locals$userinfo$processing = data
         } else {
-          r_locals$userinfo <- "Fail"
+          r_locals$userinfo$processing <- "Fail compiling raw data"
         }
     })
 
     #### Plot bttn ####
     observeEvent(input$plot_raw_data, {
-      locals$plot <- plot_main(data = r_locals$data,
-                                 y = input$parameter,
+      r_locals$data <- data_get_raw_data(con = db_con(),
+                                         station = input$station,
+                                         parameter = input$parameter)
+      r_locals$plot <- plot_main(data = r_locals$data,
+                                 y = input$station,
                                  y_title = input$parameter)
     })
 

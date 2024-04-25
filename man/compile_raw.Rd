@@ -4,9 +4,11 @@
 \alias{compile_raw}
 \title{Compile raw data}
 \usage{
-compile_raw(station, parameter, append = FALSE, col_names = TRUE)
+compile_raw(con, station, parameter, append = FALSE, col_names = TRUE)
 }
 \arguments{
+\item{con}{PqConnection: database connection}
+
 \item{station}{string: station name}
 
 \item{parameter}{string: parameter name}
@@ -20,7 +22,4 @@ string: message
 }
 \description{
 Compile raw data
-}
-\examples{
-compile_raw("BE", "level")
 }

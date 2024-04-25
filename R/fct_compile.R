@@ -1,5 +1,6 @@
 #' Compile raw data
 #'
+#' @param con PqConnection: database connection
 #' @param station string: station name
 #' @param parameter string: parameter name
 #' @param append logical: append to existing file
@@ -10,12 +11,10 @@
 #'
 #' @importFrom dplyr bind_rows mutate_all select distinct mutate filter arrange
 #' @importFrom utils write.table read.csv
-#' @importFrom DBI dbSendQuery dbBind dbClearResult dbDisconnect dbFetch dbExecute dbGetQuery
+#' @importFrom DBI dbSendQuery dbClearResult dbDisconnect dbGetQuery dbGetRowsAffected
 #' @importFrom glue glue
-#'
-#' @examples
-#' compile_raw("BE", "level")
-compile_raw <- function(station,
+compile_raw <- function(con,
+                        station,
                         parameter,
                         append = FALSE,
                         col_names = TRUE){
@@ -29,44 +28,40 @@ compile_raw <- function(station,
   compile <- bind_rows(lapply(files, function(file) {
     read.csv(file, stringsAsFactors = FALSE, sep = ";", row.names = NULL, header = FALSE)
   }))
+
   # rename columns
   colnames(compile) <- c("date", "time", parameter)
   # clean and format data
   compile <- compile %>%
     mutate_all(~replace(., . == "---", NA)) %>%
-    mutate(date_time = as.POSIXct(paste(date, time, sep = " "), format = "%d/%m/%Y %H:%M:%S"),
-           parameter = as.numeric({{parameter}})) %>%
+    mutate(date_time = as.POSIXct(paste(.data[["date"]], .data[["time"]], sep = " "), format = "%d/%m/%Y %H:%M:%S"),
+           !!parameter := as.numeric(.data[[parameter]])) %>%
     distinct(date_time, .keep_all = TRUE) %>%
     filter(!is.na(date_time)) %>%
-    select(date_time, {{parameter}})
-
-  # compile_null <- compile %>% filter(is.na(date_time))
-  # print(compile_null)
-
+    select(date_time, !!parameter)
 
   # Create the SQL statement for insertion
-  sql_statement <- glue::glue("INSERT INTO {parameter} (date_time, {tolower(station)})
+  sql_statement <- glue::glue("INSERT INTO {parameter} (date_time, {station})
                           VALUES ($1, $2) ON CONFLICT (date_time) DO NOTHING")
-  # print(sql_statement)
 
   # Prepare the SQL statement
-  stmt <- dbSendQuery(con, sql_statement,
+  result <- dbSendQuery(con, sql_statement,
                       params = list(compile$date_time,
                                     compile[[parameter]]))
 
-  # Bind parameters and execute the statement for each row of data
-  # dbBind(stmt, compile)
-  dbExecute(stmt)
+  # Check if the query was executed successfully
+  if (!inherits(result, "DBIResult")) {
+    stop("Query execution failed!")
+  }
 
-  # Close the statement and connection
-  dbClearResult(stmt)
+  # Get the number of rows affected by the query
+  rows_affected <- dbGetRowsAffected(result)
 
-  # Get the number of rows affected
-  num_affected_rows <- dbGetQuery(con, glue::glue("SELECT COUNT(*) FROM {parameter}"))
+  # Close the result set
+  dbClearResult(result)
 
-  print(num_affected_rows)
-
+  # disconnect from the database
   dbDisconnect(con)
 
-  return(glue::glue("{parameter} table updated for {station} station with {rows_insert} inserted"))
+  return(glue::glue("{parameter} table updated for {toupper(station)} station with {rows_affected} rows inserted"))
 }

@@ -9,12 +9,12 @@
 #' @return plotly graph.
 #' @export
 plot_main <- function(data, y, y_title){
-  plot <- plot_ly(data, x = ~date_time,
-                  y = ~y,
+  plot <- plot_ly(x = data[["date_time"]],
+                  y = data[[y]],
                   type = 'scatter', mode = 'lines'
   ) %>%
     layout(xaxis = list(
-      title = 'Date Time'),
+      title = "Date time"),
       yaxis = list(
         title = y_title
       ),
