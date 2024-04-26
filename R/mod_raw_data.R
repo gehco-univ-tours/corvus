@@ -8,11 +8,13 @@
 #'
 #' @importFrom shiny NS tagList
 #' @importFrom plotly plotlyOutput
+#' @importFrom shinybusy add_busy_bar
 mod_raw_data_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
       fluidRow(
+        add_busy_bar(color = "#FF0000"),
         plotlyOutput(ns("plot"))
       ),
       fluidRow(

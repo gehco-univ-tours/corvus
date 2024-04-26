@@ -17,6 +17,7 @@ Imports:
     rlang,
     RPostgres,
     shiny (>= 1.8.1),
+    shinybusy,
     utils
 Suggests: 
     spelling,
