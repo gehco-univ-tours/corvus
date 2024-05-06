@@ -37,9 +37,7 @@ mod_raw_data_ui <- function(id){
           dateRangeInput(inputId = ns("date"),
                          label = "Date",
                          start =  "2019-01-01",
-                         end =  "2019-02-28",
-                         # start =  Sys.Date() - months(12),
-                         # end =  Sys.Date()
+                         end =  "2019-02-28"
                          )
         ),
       ), # fluidRow
@@ -50,9 +48,13 @@ mod_raw_data_ui <- function(id){
                        label = "Compile raw data")
         ),
         column(
-          width = 4,
+          width = 3,
           actionButton(inputId = ns("plot_raw_data"),
                        label = "Plot raw data")
+        ),
+        column(
+          width = 3,
+          uiOutput(ns("plot_corr_data_ui"))
         )
       ), # fluidRow
       tags$hr(), # add horizontal line
@@ -203,6 +205,32 @@ mod_raw_data_server <- function(id){
       r_locals$plot <- plot_main(data = r_locals$raw_data,
                                  y = input$station,
                                  y_title = input$parameter)
+      output$plot_corr_data_ui <- renderUI({
+        checkboxInput(inputId = ns("plot_corr_data"),
+                      label = "Plot corr data",
+                      value = FALSE)
+      })
+    })
+
+    #### Plot corr data ####
+    observeEvent(input$plot_corr_data, {
+      if (input$plot_corr_data == TRUE) {
+        r_locals$corr_data <- data_get_corr_data(con = db_con(),
+                                                 station = input$station,
+                                                 parameter = input$parameter,
+                                                 start_date = input$date[1],
+                                                 end_date = input$date[2])
+        plot_edit <- plot_add_trace(data = r_locals$corr_data,
+                                    y = input$station,
+                                    y_label = input$parameter)
+
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("deleteTraces", 1) %>%
+          plotlyProxyInvoke("addTraces", plot_edit, 1)
+      } else {
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("deleteTraces", 1)
+      }
     })
 
     #### Edition mode UI ####
@@ -326,8 +354,8 @@ mod_raw_data_server <- function(id){
                                   y_label = input$parameter)
 
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 1) %>%
-          plotlyProxyInvoke("addTraces", plot_edit, 1)
+          plotlyProxyInvoke("deleteTraces", 2) %>%
+          plotlyProxyInvoke("addTraces", plot_edit, 2)
     })
 
     ##### Validate change ####
