@@ -29,7 +29,7 @@ mod_raw_data_ui <- function(id){
           width = 3,
           selectInput(inputId = ns("parameter"),
                       label = "Parameter",
-                      choices = c("level", "turbidity"))
+                      choices = params_get_parameters(db_con()))
         ),
         column(
           width = 3,

@@ -29,3 +29,17 @@ params_get_stations <- function(con){
   stations <- setNames(stations, upper_stations)
   return(stations)
 }
+
+#' parameters list
+#'
+#' This function returns a list of parameters from the database.
+#'
+#' @param con PqConnection: database connection
+#'
+#' @return list
+#' @export
+params_get_parameters <- function(con){
+  parameters <- DBI::dbGetQuery(con, "SELECT DISTINCT name FROM parameters")
+  parameters <- as.list(parameters$name)
+  return(parameters)
+}
