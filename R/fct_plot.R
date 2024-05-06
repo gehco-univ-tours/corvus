@@ -4,14 +4,18 @@
 #' @param y text parameter selected.
 #' @param y_title text parameter selected name.
 #'
-#' @importFrom plotly plot_ly layout
+#' @importFrom plotly plot_ly layout add_trace
 #'
 #' @return plotly graph.
 #' @export
 plot_main <- function(data, y, y_title){
-  plot <- plot_ly(x = data[["date_time"]],
-                  y = data[[y]],
-                  type = 'scatter', mode = 'lines'
+  plot <- plot_ly() %>%
+    add_trace(x = data[["date_time"]],
+              y = data[[y]],
+              type = 'scatter',
+              mode = 'lines',
+              name = "raw",
+              line = list(color = 'black')
   ) %>%
     layout(xaxis = list(
       title = "Date time"),
@@ -23,7 +27,7 @@ plot_main <- function(data, y, y_title){
   return(plot)
 }
 
-#' plotly add trace.
+#' plotly add corr trace.
 #'
 #' @param data data frame containing the selected axis data.
 #' @param y text metric to be plotted on the y-axis.
@@ -31,23 +35,34 @@ plot_main <- function(data, y, y_title){
 #'
 #' @return list
 #' @export
-plot_add_trace <- function(data, y, y_label){
+plot_add_corr_trace <- function(data, y, y_label){
   trace <- list(
     x = data[["date_time"]],
     y = data[[y]],
     type = 'scatter',
-    mode = 'lines'
+    mode = 'lines',
+    name = "corr",
+    line = list(color = 'green')
   )
-  # layout <- list(
-  #   yaxis = list(
-  #     overlaying = 'y',
-  #     showgrid = FALSE,  # Hide the gridlines for the second y-axis
-  #     zeroline = FALSE,
-  #     showline = FALSE,  # Hide the axis line for the second y-axis
-  #     range = c(0, max(data[[y]]))
-  #   )
-  # )
-  # proxy <- list("trace" = trace,
-  #               "layout" = layout)
+  return(trace)
+}
+
+#' plotly add edit trace.
+#'
+#' @param data data frame containing the selected axis data.
+#' @param y text metric to be plotted on the y-axis.
+#' @param y_label text name of the metric plotted.
+#'
+#' @return list
+#' @export
+plot_add_edit_trace <- function(data, y, y_label){
+  trace <- list(
+    x = data[["date_time"]],
+    y = data[[y]],
+    type = 'scatter',
+    mode = 'lines',
+    name = "edit",
+    line = list(color = 'orange')
+  )
   return(trace)
 }

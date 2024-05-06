@@ -47,7 +47,6 @@ mod_raw_data_ui <- function(id){
           actionButton(inputId = ns("plot_raw_data"),
                        label = "Plot raw data"),
           tags$div(style = "margin-bottom: 20px;"),
-          uiOutput(ns("plot_corr_data_ui"))
         ),
         column(
           width = 2,
@@ -160,6 +159,8 @@ mod_raw_data_server <- function(id){
       raw_data = NULL,
       corr_data = NULL,
       plot = NULL,
+      corr_plot = FALSE,
+      edit_plot = FALSE,
       userinfo = list("User information"),
       edit_data = NULL
     )
@@ -196,40 +197,14 @@ mod_raw_data_server <- function(id){
 
     #### Plot bttn ####
     observeEvent(input$plot_raw_data, {
-      r_locals$raw_data <- data_get_raw_data(con = db_con(),
+      r_locals$corr_data <- data_get_corr_data(con = db_con(),
                                          station = input$station,
                                          parameter = input$parameter,
                                          start_date = input$date[1],
                                          end_date = input$date[2])
-      r_locals$plot <- plot_main(data = r_locals$raw_data,
+      r_locals$plot <- plot_main(data = r_locals$corr_data,
                                  y = input$station,
                                  y_title = input$parameter)
-      output$plot_corr_data_ui <- renderUI({
-        checkboxInput(inputId = ns("plot_corr_data"),
-                      label = "Plot corr data",
-                      value = FALSE)
-      })
-    })
-
-    #### Plot corr data ####
-    observeEvent(input$plot_corr_data, {
-      if (input$plot_corr_data == TRUE) {
-        r_locals$corr_data <- data_get_corr_data(con = db_con(),
-                                                 station = input$station,
-                                                 parameter = input$parameter,
-                                                 start_date = input$date[1],
-                                                 end_date = input$date[2])
-        plot_edit <- plot_add_trace(data = r_locals$corr_data,
-                                    y = input$station,
-                                    y_label = input$parameter)
-
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 1) %>%
-          plotlyProxyInvoke("addTraces", plot_edit, 1)
-      } else {
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 1)
-      }
     })
 
     #### Edition mode UI ####
@@ -348,13 +323,13 @@ mod_raw_data_server <- function(id){
                                                                     format = "%Y-%m-%d %H:%M")) %>%
         mutate(!!input$station := .data[[input$station]] + input$value_offset)
 
-      plot_edit <- plot_add_trace(data = r_locals$edit_data,
-                                  y = input$station,
-                                  y_label = input$parameter)
+      plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
+                                       y = input$station,
+                                       y_label = input$parameter)
 
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 2) %>%
-          plotlyProxyInvoke("addTraces", plot_edit, 2)
+          plotlyProxyInvoke("deleteTraces", 1) %>%
+          plotlyProxyInvoke("addTraces", plot_edit, 1)
     })
 
     ##### Validate change ####
@@ -375,8 +350,19 @@ mod_raw_data_server <- function(id){
 
       if (!is.null(data)) {
         r_locals$userinfo$processing = data
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("deleteTraces", 1)
+
+        r_locals$corr_data <- data_get_corr_data(con = db_con(),
+                                                 station = input$station,
+                                                 parameter = input$parameter,
+                                                 start_date = input$date[1],
+                                                 end_date = input$date[2])
+        r_locals$plot <- plot_main(data = r_locals$corr_data,
+                                   y = input$station,
+                                   y_title = input$parameter)
       } else {
-        r_locals$userinfo$processing <- "Fail compiling raw data"
+        r_locals$userinfo$processing <- "Fail insert edits"
       }
     })
   })
