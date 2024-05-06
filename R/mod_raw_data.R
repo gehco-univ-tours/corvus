@@ -23,8 +23,7 @@ mod_raw_data_ui <- function(id){
           width = 3,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = c("BE" = "be",
-                                  "PI" = "pi"))
+                      choices = params_get_stations(db_con()))
         ),
         column(
           width = 3,
