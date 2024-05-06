@@ -22,3 +22,32 @@ plot_main <- function(data, y, y_title){
     )
   return(plot)
 }
+
+#' plotly add trace.
+#'
+#' @param data data frame containing the selected axis data.
+#' @param y text metric to be plotted on the y-axis.
+#' @param y_label text name of the metric plotted.
+#'
+#' @return list
+#' @export
+plot_add_trace <- function(data, y, y_label){
+  trace <- list(
+    x = data[["date_time"]],
+    y = data[[y]],
+    type = 'scatter',
+    mode = 'lines'
+  )
+  # layout <- list(
+  #   yaxis = list(
+  #     overlaying = 'y',
+  #     showgrid = FALSE,  # Hide the gridlines for the second y-axis
+  #     zeroline = FALSE,
+  #     showline = FALSE,  # Hide the axis line for the second y-axis
+  #     range = c(0, max(data[[y]]))
+  #   )
+  # )
+  # proxy <- list("trace" = trace,
+  #               "layout" = layout)
+  return(trace)
+}

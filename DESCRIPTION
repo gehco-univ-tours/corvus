@@ -18,6 +18,7 @@ Imports:
     RPostgres,
     shiny (>= 1.8.1),
     shinybusy,
+    shinyWidgets,
     utils
 Suggests: 
     spelling,
