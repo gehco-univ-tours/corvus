@@ -20,16 +20,18 @@ mod_raw_data_ui <- function(id){
       ),
       fluidRow(
         column(
-          width = 3,
+          width = 2,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = params_get_stations(db_con()))
+                      choices = params_get_stations(db_con()),
+                      selected = "be")
         ),
         column(
-          width = 3,
+          width = 2,
           selectInput(inputId = ns("parameter"),
                       label = "Parameter",
-                      choices = params_get_parameters(db_con()))
+                      choices = params_get_parameters(db_con()),
+                      selected = "level")
         ),
         column(
           width = 3,
@@ -39,22 +41,20 @@ mod_raw_data_ui <- function(id){
                          end =  "2019-02-28"
                          )
         ),
-      ), # fluidRow
-      fluidRow(
         column(
-          width = 4,
+          width = 3,
+          tags$div(style = "margin-top: 20px;"),
+          actionButton(inputId = ns("plot_raw_data"),
+                       label = "Plot raw data"),
+          tags$div(style = "margin-bottom: 20px;"),
+          uiOutput(ns("plot_corr_data_ui"))
+        ),
+        column(
+          width = 2,
+          tags$div(style = "margin-top: 20px;"),
           actionButton(inputId = ns("compile_raw_data"),
                        label = "Compile raw data")
         ),
-        column(
-          width = 3,
-          actionButton(inputId = ns("plot_raw_data"),
-                       label = "Plot raw data")
-        ),
-        column(
-          width = 3,
-          uiOutput(ns("plot_corr_data_ui"))
-        )
       ), # fluidRow
       tags$hr(), # add horizontal line
       fluidRow(
