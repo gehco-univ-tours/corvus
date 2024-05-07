@@ -56,6 +56,7 @@ mod_raw_data_ui <- function(id){
         ),
       ), # fluidRow
       tags$hr(), # add horizontal line
+      #### Edition mode UI ####
       fluidRow(
         column(
           width = 2,
@@ -82,6 +83,7 @@ mod_raw_data_ui <- function(id){
         column(
           width = 3,
           uiOutput(ns("value_offset_ui")),
+          uiOutput(ns("value_deviation_ui")),
           uiOutput(ns("plot_edit_ui")),
           tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_edit_ui"))
@@ -295,7 +297,18 @@ mod_raw_data_server <- function(id){
                        label = "Offset value",
                        value = 0)
         })
-        r_locals$userinfo$deviation <- NULL
+        output$value_deviation_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == "deviation"){
+        output$value_deviation_ui <- renderUI({
+          numericInput(inputId = ns("deviation_edit"),
+                       label = "Deviation end value",
+                       value = 0)
+        })
+        output$value_offset_ui <- renderUI({
+          NULL
+        })
       } else {
         output$value_offset_ui <- renderUI({
           NULL
