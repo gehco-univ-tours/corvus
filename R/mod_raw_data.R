@@ -67,24 +67,24 @@ mod_raw_data_ui <- function(id){
         ),
         column(
           width = 4,
-          uiOutput(ns("date_offset_ui")),
+          uiOutput(ns("date_edit_ui")),
           fluidRow(
             column(
               width = 6,
-              uiOutput(ns("time_datestart_offset_ui"))
+              uiOutput(ns("time_datestart_edit_ui"))
             ),
             column(
               width = 6,
-              uiOutput(ns("time_dateend_offset_ui"))
+              uiOutput(ns("time_dateend_edit_ui"))
             ),
           ),
         ),
         column(
           width = 3,
           uiOutput(ns("value_offset_ui")),
-          uiOutput(ns("plot_offset_ui")),
+          uiOutput(ns("plot_edit_ui")),
           tags$div(style = "margin-top: 20px;"),
-          uiOutput(ns("validate_offset_ui"))
+          uiOutput(ns("validate_edit_ui"))
         ),
         column(
           width = 3,
@@ -212,8 +212,8 @@ mod_raw_data_server <- function(id){
                                   "Delete" = "delete",
                                   "Interpolate" = "interpolate"))
         })
-        output$date_offset_ui <- renderUI({
-          dateRangeInput(inputId = ns("date_offset"),
+        output$date_edit_ui <- renderUI({
+          dateRangeInput(inputId = ns("date_edit"),
                          label = "Date",
                          start =  input$date[1],
                          end =  input$date[2],
@@ -221,22 +221,22 @@ mod_raw_data_server <- function(id){
                          min = input$date[1],
                          max = input$date[2])
         })
-        output$time_datestart_offset_ui <- renderUI({
-          timeInput(inputId = ns("time_datestart_offset"),
+        output$time_datestart_edit_ui <- renderUI({
+          timeInput(inputId = ns("time_datestart_edit"),
                     label = "Date start time",
                     value = "00:00")
         })
-        output$time_dateend_offset_ui <- renderUI({
-          timeInput(inputId = ns("time_dateend_offset"),
+        output$time_dateend_edit_ui <- renderUI({
+          timeInput(inputId = ns("time_dateend_edit"),
                     label = "Date end time",
                     value = "00:00")
         })
-        output$plot_offset_ui <- renderUI({
-          actionButton(inputId = ns("plot_offset"),
+        output$plot_edit_ui <- renderUI({
+          actionButton(inputId = ns("plot_edit"),
                        label = "Plot change")
         })
-        output$validate_offset_ui <- renderUI({
-          actionButton(inputId = ns("validate_offset"),
+        output$validate_edit_ui <- renderUI({
+          actionButton(inputId = ns("validate_edit"),
                        label = "Validate")
         })
         output$comment_ui <- renderUI({
@@ -252,22 +252,22 @@ mod_raw_data_server <- function(id){
         output$correction_ui <- renderUI({
           NULL
         })
-        output$date_offset_ui <- renderUI({
+        output$date_edit_ui <- renderUI({
           NULL
         })
-        output$time_datestart_offset_ui <- renderUI({
+        output$time_datestart_edit_ui <- renderUI({
           NULL
         })
-        output$time_dateend_offset_ui <- renderUI({
+        output$time_dateend_edit_ui <- renderUI({
           NULL
         })
-        output$value_offset_ui <- renderUI({
+        output$value_edit_ui <- renderUI({
           NULL
         })
-        output$plot_offset_ui <- renderUI({
+        output$plot_edit_ui <- renderUI({
           NULL
         })
-        output$validate_offset_ui <- renderUI({
+        output$validate_edit_ui <- renderUI({
           NULL
         })
         output$comment_ui <- renderUI({
@@ -278,9 +278,9 @@ mod_raw_data_server <- function(id){
 
     ##### Edit date ####
 
-    observeEvent(c(ymd(input$date_offset), hm(input$time_datestart_offset), hm(input$time_dateend_offset)), {
-      r_locals$start_datetime_edit <- ymd_hm(paste(input$date_offset[1], input$time_datestart_offset, sep = " "))
-      r_locals$end_datetime_edit <- ymd_hm(paste(input$date_offset[2], input$time_dateend_offset, sep = " "))
+    observeEvent(c(ymd(input$date_edit), hm(input$time_datestart_edit), hm(input$time_dateend_edit)), {
+      r_locals$start_datetime_edit <- ymd_hm(paste(input$date_edit[1], input$time_datestart_edit, sep = " "))
+      r_locals$end_datetime_edit <- ymd_hm(paste(input$date_edit[2], input$time_dateend_edit, sep = " "))
 
       r_locals$userinfo$edition <- glue::glue("Edition from {r_locals$start_datetime_edit} to {r_locals$end_datetime_edit}")
     })
@@ -291,7 +291,7 @@ mod_raw_data_server <- function(id){
       if (input$correction == "offset") {
 
         output$value_offset_ui <- renderUI({
-          numericInput(inputId = ns("value_offset"),
+          numericInput(inputId = ns("offset_edit"),
                        label = "Offset value",
                        value = 0)
         })
@@ -304,7 +304,7 @@ mod_raw_data_server <- function(id){
     })
 
     #### Plot change ####
-    observeEvent(input$plot_offset, {
+    observeEvent(input$plot_edit, {
       r_locals$edit_data <- data_get_raw_data(con = db_con(),
                                               station = input$station,
                                               parameter = input$parameter,
@@ -322,7 +322,7 @@ mod_raw_data_server <- function(id){
     })
 
     #### Validate change ####
-    observeEvent(input$validate_offset, {
+    observeEvent(input$validate_edit, {
       data <- data_insert_offset(con = db_con(),
                                  station = input$station,
                                  parameter = input$parameter,
