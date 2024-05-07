@@ -150,7 +150,9 @@ mod_raw_data_server <- function(id){
       corr_plot = FALSE,
       edit_plot = FALSE,
       userinfo = list("User information"),
-      edit_data = NULL
+      edit_data = NULL,
+      start_datetime_edit = NULL,
+      end_datetime_edit = NULL
     )
 
     ### UI OUTPUT ####
@@ -273,8 +275,20 @@ mod_raw_data_server <- function(id){
       }
     })
 
-    #### Edition offset ####
+    ##### Edit date ####
+
+    observeEvent(c(input$date_offset, input$time_datestart_offset, input$time_dateend_offset), {
+      r_locals$start_datetime_edit <- as.POSIXct(paste(input$date_offset[1], input$time_datestart_offset, sep = " "),
+                                                 format = "%Y-%m-%d %H:%M")
+      r_locals$end_datetime_edit <- as.POSIXct(paste(input$date_offset[2], input$time_dateend_offset, sep = " "),
+                                               format = "%Y-%m-%d %H:%M")
+
+      r_locals$userinfo$edition <- glue::glue("Edition from {r_locals$start_datetime_edit} to {r_locals$end_datetime_edit}")
+    })
+
+    ##### Edition mode ####
     observeEvent(input$correction, {
+
       if (input$correction == "offset") {
 
         output$value_offset_ui <- renderUI({
@@ -282,7 +296,7 @@ mod_raw_data_server <- function(id){
                        label = "Offset value",
                        value = 0)
         })
-
+        r_locals$userinfo$deviation <- NULL
       } else {
         output$value_offset_ui <- renderUI({
           NULL
@@ -290,19 +304,13 @@ mod_raw_data_server <- function(id){
       }
     })
 
-    ##### Plot change ####
+    #### Plot change ####
     observeEvent(input$plot_offset, {
       r_locals$edit_data <- data_get_raw_data(con = db_con(),
                                               station = input$station,
                                               parameter = input$parameter,
-                                              start_date = as.POSIXct(paste(input$date_offset[1],
-                                                                            input$time_datestart_offset,
-                                                                            sep = " "),
-                                                                      format = "%Y-%m-%d %H:%M"),
-                                              end_date = as.POSIXct(paste(input$date_offset[2],
-                                                                          input$time_dateend_offset,
-                                                                          sep = " "),
-                                                                    format = "%Y-%m-%d %H:%M")) %>%
+                                              start_date = r_locals$start_datetime_edit,
+                                              end_date = r_locals$end_datetime_edit) %>%
         mutate(!!input$station := .data[[input$station]] + input$value_offset)
 
       plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
@@ -314,19 +322,13 @@ mod_raw_data_server <- function(id){
           plotlyProxyInvoke("addTraces", plot_edit, 1)
     })
 
-    ##### Validate change ####
+    #### Validate change ####
     observeEvent(input$validate_offset, {
       data <- data_insert_offset(con = db_con(),
                                  station = input$station,
                                  parameter = input$parameter,
-                                 date_time_start = as.POSIXct(paste(input$date_offset[1],
-                                                                    input$time_datestart_offset,
-                                                                    sep = " "),
-                                                              format = "%Y-%m-%d %H:%M"),
-                                 date_time_end = as.POSIXct(paste(input$date_offset[2],
-                                                                  input$time_dateend_offset,
-                                                                  sep = " "),
-                                                            format = "%Y-%m-%d %H:%M"),
+                                 date_time_start = r_locals$start_datetime_edit,
+                                 date_time_end = r_locals$end_datetime_edit,
                                  offset_val = input$value_offset,
                                  author = input$author,
                                  comment = input$comment)
