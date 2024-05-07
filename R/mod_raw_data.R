@@ -313,6 +313,9 @@ mod_raw_data_server <- function(id){
         output$value_offset_ui <- renderUI({
           NULL
         })
+        output$value_deviation_ui <- renderUI({
+          NULL
+        })
       }
     })
 
