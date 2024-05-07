@@ -121,6 +121,7 @@ mod_raw_data_ui <- function(id){
 #' @noRd
 #' @importFrom plotly renderPlotly plotlyProxy plotlyProxyInvoke
 #' @importFrom dplyr mutate
+#' @importFrom lubridate hm ymd ymd_hm
 mod_raw_data_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
@@ -277,11 +278,9 @@ mod_raw_data_server <- function(id){
 
     ##### Edit date ####
 
-    observeEvent(c(input$date_offset, input$time_datestart_offset, input$time_dateend_offset), {
-      r_locals$start_datetime_edit <- as.POSIXct(paste(input$date_offset[1], input$time_datestart_offset, sep = " "),
-                                                 format = "%Y-%m-%d %H:%M")
-      r_locals$end_datetime_edit <- as.POSIXct(paste(input$date_offset[2], input$time_dateend_offset, sep = " "),
-                                               format = "%Y-%m-%d %H:%M")
+    observeEvent(c(ymd(input$date_offset), hm(input$time_datestart_offset), hm(input$time_dateend_offset)), {
+      r_locals$start_datetime_edit <- ymd_hm(paste(input$date_offset[1], input$time_datestart_offset, sep = " "))
+      r_locals$end_datetime_edit <- ymd_hm(paste(input$date_offset[2], input$time_dateend_offset, sep = " "))
 
       r_locals$userinfo$edition <- glue::glue("Edition from {r_locals$start_datetime_edit} to {r_locals$end_datetime_edit}")
     })

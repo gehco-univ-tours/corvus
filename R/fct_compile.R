@@ -10,6 +10,7 @@
 #' @export
 #'
 #' @importFrom dplyr bind_rows mutate_all select distinct mutate filter arrange
+#' @importFrom lubridate ymd_hm
 #' @importFrom utils write.table read.csv
 #' @importFrom DBI dbSendQuery dbClearResult dbDisconnect dbGetQuery dbGetRowsAffected
 #' @importFrom glue glue
@@ -34,7 +35,7 @@ compile_raw <- function(con,
   # clean and format data
   compile <- compile %>%
     mutate_all(~replace(., . == "---", NA)) %>%
-    mutate(date_time = as.POSIXct(paste(.data[["date"]], .data[["time"]], sep = " "), format = "%d/%m/%Y %H:%M:%S"),
+    mutate(date_time = ymd_hm(paste(.data[["date"]], .data[["time"]], sep = " ")),
            !!parameter := as.numeric(.data[[parameter]])) %>%
     distinct(date_time, .keep_all = TRUE) %>%
     filter(!is.na(date_time)) %>%

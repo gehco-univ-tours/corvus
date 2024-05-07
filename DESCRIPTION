@@ -12,6 +12,7 @@ Imports:
     dplyr,
     glue,
     golem (>= 0.4.1),
+    lubridate,
     magrittr,
     plotly,
     rlang,
