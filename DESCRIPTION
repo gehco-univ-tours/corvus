@@ -19,6 +19,7 @@ Imports:
     shiny (>= 1.8.1),
     shinybusy,
     shinyWidgets,
+    stats,
     utils
 Suggests: 
     spelling,

@@ -58,7 +58,7 @@ mod_raw_data_ui <- function(id){
       tags$hr(), # add horizontal line
       fluidRow(
         column(
-          width = 3,
+          width = 2,
           switchInput(inputId = ns("edition"),
                       label = "Edition",
                       onStatus = "success"),
@@ -66,7 +66,7 @@ mod_raw_data_ui <- function(id){
           uiOutput(ns("author_ui"))
         ),
         column(
-          width = 5,
+          width = 4,
           uiOutput(ns("date_offset_ui")),
           fluidRow(
             column(
@@ -80,11 +80,15 @@ mod_raw_data_ui <- function(id){
           ),
         ),
         column(
-          width = 4,
+          width = 3,
           uiOutput(ns("value_offset_ui")),
           uiOutput(ns("plot_offset_ui")),
           tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_offset_ui"))
+        ),
+        column(
+          width = 3,
+          uiOutput(ns("comment_ui"))
         )
       ), # fluidRow
       tags$hr(), # add horizontal line
@@ -169,9 +173,7 @@ mod_raw_data_server <- function(id){
       r_locals$userinfo$processing = "Compiling raw data"
         data <- compile_raw(con = db_con(),
                             station = input$station,
-                            parameter = input$parameter,
-                            start_date = input$date[1],
-                            end_date = input$date[2])
+                            parameter = input$parameter)
         if (!is.null(data)) {
           r_locals$userinfo$processing = data
         } else {
@@ -207,6 +209,39 @@ mod_raw_data_server <- function(id){
                                   "Delete" = "delete",
                                   "Interpolate" = "interpolate"))
         })
+        output$date_offset_ui <- renderUI({
+          dateRangeInput(inputId = ns("date_offset"),
+                         label = "Date",
+                         start =  input$date[1],
+                         end =  input$date[2],
+                         startview = "month",
+                         min = input$date[1],
+                         max = input$date[2])
+        })
+        output$time_datestart_offset_ui <- renderUI({
+          timeInput(inputId = ns("time_datestart_offset"),
+                    label = "Date start time",
+                    value = "00:00")
+        })
+        output$time_dateend_offset_ui <- renderUI({
+          timeInput(inputId = ns("time_dateend_offset"),
+                    label = "Date end time",
+                    value = "00:00")
+        })
+        output$plot_offset_ui <- renderUI({
+          actionButton(inputId = ns("plot_offset"),
+                       label = "Plot change")
+        })
+        output$validate_offset_ui <- renderUI({
+          actionButton(inputId = ns("validate_offset"),
+                       label = "Validate")
+        })
+        output$comment_ui <- renderUI({
+          textAreaInput(inputId = ns("comment"),
+                        label = "Comment",
+                        value = "")
+        })
+
       } else {
         output$author_ui <- renderUI({
           NULL
@@ -232,61 +267,24 @@ mod_raw_data_server <- function(id){
         output$validate_offset_ui <- renderUI({
           NULL
         })
+        output$comment_ui <- renderUI({
+          NULL
+        })
       }
     })
 
     #### Edition offset ####
     observeEvent(input$correction, {
       if (input$correction == "offset") {
-        output$date_offset_ui <- renderUI({
-          dateRangeInput(inputId = ns("date_offset"),
-                         label = "Date",
-                         start =  input$date[1],
-                         end =  input$date[2],
-                         startview = "month",
-                         min = input$date[1],
-                         max = input$date[2])
-        })
-        output$time_datestart_offset_ui <- renderUI({
-          timeInput(inputId = ns("time_datestart_offset"),
-                    label = "Date start time",
-                    value = "00:00")
-        })
-        output$time_dateend_offset_ui <- renderUI({
-          timeInput(inputId = ns("time_dateend_offset"),
-                    label = "Date end time",
-                    value = "00:00")
-        })
+
         output$value_offset_ui <- renderUI({
           numericInput(inputId = ns("value_offset"),
                        label = "Offset value",
                        value = 0)
         })
-        output$plot_offset_ui <- renderUI({
-          actionButton(inputId = ns("plot_offset"),
-                       label = "Plot change")
-        })
-        output$validate_offset_ui <- renderUI({
-          actionButton(inputId = ns("validate_offset"),
-                       label = "Validate")
-        })
+
       } else {
-        output$date_offset_ui <- renderUI({
-          NULL
-        })
-        output$time_datestart_offset_ui <- renderUI({
-          NULL
-        })
-        output$time_dateend_offset_ui <- renderUI({
-          NULL
-        })
         output$value_offset_ui <- renderUI({
-          NULL
-        })
-        output$plot_offset_ui <- renderUI({
-          NULL
-        })
-        output$validate_offset_ui <- renderUI({
           NULL
         })
       }
@@ -330,7 +328,8 @@ mod_raw_data_server <- function(id){
                                                                   sep = " "),
                                                             format = "%Y-%m-%d %H:%M"),
                                  offset_val = input$value_offset,
-                                 author = input$author)
+                                 author = input$author,
+                                 comment = input$comment)
 
       if (!is.null(data)) {
         r_locals$userinfo$processing = data

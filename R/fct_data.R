@@ -62,6 +62,7 @@ data_get_corr_data <- function(con, station, parameter, start_date, end_date){
 #' @param date_time_end character: end date in format 'YYYY-MM-DD HH:MM'
 #' @param offset_val numeric: offset value
 #' @param author character: author name
+#' @param comment character: comment
 #'
 #' @importFrom glue glue
 #' @importFrom DBI dbSendQuery dbGetRowsAffected dbDisconnect
@@ -71,16 +72,19 @@ data_get_corr_data <- function(con, station, parameter, start_date, end_date){
 #'
 #' @examples
 #' con <- db_con()
-#' data_insert_offset(con, "be", "level", as.POSIXct("2021-01-01 00:00", format = "%Y-%m-%d %H:%M"), as.POSIXct("2021-01-02 00:00", format = "%Y-%m-%d %H:%M"), 0.5, "Louis Manière")
-data_insert_offset <- function(con, station, parameter, date_time_start, date_time_end, offset_val, author){
+#' data_insert_offset(con, "be", "level",
+#'   as.POSIXct("2021-01-01 00:00", format = "%Y-%m-%d %H:%M"),
+#'    as.POSIXct("2021-01-02 00:00", format = "%Y-%m-%d %H:%M"),
+#'    0.5, "Louis Manière", "my comment")
+data_insert_offset <- function(con, station, parameter, date_time_start, date_time_end, offset_val, author, comment){
   # Create the SQL statement for insertion
-  sql_statement <- glue::glue("INSERT INTO corr_offset (station, parameter, date_time_start, date_time_end, offset_val, author)
-                    VALUES ($1,$2, $3, $4, $5, $6)")
+  sql_statement <- glue::glue("INSERT INTO corr_offset (station, parameter, date_time_start, date_time_end, offset_val, author, comment)
+                    VALUES ($1,$2, $3, $4, $5, $6, $7)")
   # Prepare the SQL statement
   result <- dbSendQuery(con, sql_statement,
                         params = list(station, parameter,
                                       date_time_start, date_time_end,
-                                      offset_val, author))
+                                      offset_val, author, comment))
   # Get the number of rows affected by the query
   rows_affected <- dbGetRowsAffected(result)
 

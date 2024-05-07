@@ -7,9 +7,7 @@
 params_get_stations(con)
 }
 \arguments{
-\item{con}{PqConnection: database connection
-
-importFrom stats setNames}
+\item{con}{PqConnection: database connection}
 }
 \value{
 list

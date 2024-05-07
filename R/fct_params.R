@@ -18,7 +18,7 @@ params_get_authors <- function(con){
 #'
 #' @param con PqConnection: database connection
 #'
-#' importFrom stats setNames
+#' @importFrom stats setNames
 #'
 #' @return list
 #' @export

@@ -11,7 +11,8 @@ data_insert_offset(
   date_time_start,
   date_time_end,
   offset_val,
-  author
+  author,
+  comment
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ data_insert_offset(
 \item{offset_val}{numeric: offset value}
 
 \item{author}{character: author name}
+
+\item{comment}{character: comment}
 }
 \value{
 character
@@ -37,5 +40,8 @@ Insert offset data into database
 }
 \examples{
 con <- db_con()
-data_insert_offset(con, "be", "level", as.POSIXct("2021-01-01 00:00", format = "\%Y-\%m-\%d \%H:\%M"), as.POSIXct("2021-01-02 00:00", format = "\%Y-\%m-\%d \%H:\%M"), 0.5, "Louis Manière")
+data_insert_offset(con, "be", "level",
+  as.POSIXct("2021-01-01 00:00", format = "\%Y-\%m-\%d \%H:\%M"),
+   as.POSIXct("2021-01-02 00:00", format = "\%Y-\%m-\%d \%H:\%M"),
+   0.5, "Louis Manière", "my comment")
 }
