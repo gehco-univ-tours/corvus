@@ -62,44 +62,28 @@ mod_raw_data_ui <- function(id){
           switchInput(inputId = ns("edition"),
                       label = "Edition",
                       onStatus = "success"),
+          uiOutput(ns("correction_ui")),
           uiOutput(ns("author_ui"))
         ),
         column(
-          width = 3,
-          uiOutput(ns("correction_ui"))
-        )
-      ), # fluidRow
-      fluidRow(
-        column(
-          width = 3,
+          width = 5,
+          uiOutput(ns("date_offset_ui")),
+          fluidRow(
+            column(
+              width = 6,
+              uiOutput(ns("time_datestart_offset_ui"))
+            ),
+            column(
+              width = 6,
+              uiOutput(ns("time_dateend_offset_ui"))
+            ),
+          ),
         ),
         column(
           width = 4,
-          uiOutput(ns("date_offset_ui"))
-        ),
-        column(
-          width = 3,
-          uiOutput(ns("value_offset_ui"))
-        )
-      ), # fluidRow
-      fluidRow(
-        column(
-          width = 3
-        ),
-        column(
-          width = 2,
-          uiOutput(ns("time_datestart_offset_ui"))
-        ),
-        column(
-          width = 5,
-          uiOutput(ns("time_dateend_offset_ui"))
-        ),
-        column(
-          width = 1,
-          uiOutput(ns("plot_offset_ui"))
-        ),
-        column(
-          width = 1,
+          uiOutput(ns("value_offset_ui")),
+          uiOutput(ns("plot_offset_ui")),
+          tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_offset_ui"))
         )
       ), # fluidRow
