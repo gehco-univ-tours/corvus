@@ -4,10 +4,12 @@
 #'
 #' @param con PqConnection: database connection
 #'
+#' @importFrom DBI dbGetQuery
+#'
 #' @return list
 #' @export
 params_get_authors <- function(con){
-  authors <- DBI::dbGetQuery(con, "SELECT DISTINCT name FROM author")
+  authors <- dbGetQuery(con, "SELECT DISTINCT name FROM author")
   authors <- as.list(authors$name)
   return(authors)
 }
@@ -19,11 +21,12 @@ params_get_authors <- function(con){
 #' @param con PqConnection: database connection
 #'
 #' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery
 #'
 #' @return list
 #' @export
 params_get_stations <- function(con){
-  stations <- DBI::dbGetQuery(con, "SELECT code, name FROM station")
+  stations <- dbGetQuery(con, "SELECT code, name FROM station")
   stations <- setNames(stations$code, stations$name)
   return(stations)
 }
