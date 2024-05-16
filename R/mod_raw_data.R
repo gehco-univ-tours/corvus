@@ -30,8 +30,7 @@ mod_raw_data_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("parameter"),
                       label = "Parameter",
-                      choices = params_get_parameters(db_con()),
-                      selected = "level")
+                      choices = NULL)
         ),
         column(
           width = 3,
@@ -172,6 +171,12 @@ mod_raw_data_server <- function(id){
     })
 
     ### EVENT ####
+
+    #### Station parameter ####
+    observeEvent(input$station, {
+      updateSelectInput(session, "parameter",
+                        choices = params_get_parameters(db_con(), input$station))
+    })
 
     #### Compile bttn ####
     observeEvent(input$compile_raw_data, {

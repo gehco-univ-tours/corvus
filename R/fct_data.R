@@ -9,7 +9,6 @@
 #' @return data.frame
 #' @export
 #'
-#' @importFrom glue glue
 #' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
 #'
 #' @examples
@@ -20,7 +19,7 @@ data_get_raw_data <- function(con, station, parameter, start_date, end_date){
   query <- sqlInterpolate(con, sql, station = SQL(station),
                           parameter = dbQuoteIdentifier(con, parameter),
                           start_date = start_date, end_date = end_date)
-  data <- DBI::dbGetQuery(con, query)
+  data <- dbGetQuery(con, query)
   dbDisconnect(con)
   return(data)
 }

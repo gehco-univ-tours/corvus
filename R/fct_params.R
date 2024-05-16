@@ -34,10 +34,19 @@ params_get_stations <- function(con){
 #'
 #' @param con PqConnection: database connection
 #'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#'
 #' @return list
 #' @export
-params_get_parameters <- function(con){
-  parameters <- DBI::dbGetQuery(con, "SELECT DISTINCT name FROM parameter")
-  parameters <- as.list(parameters$name)
-  return(parameters)
+params_get_parameters <- function(con, station_code){
+  sql <- "SELECT parameter.name
+    FROM sensor
+    LEFT JOIN station ON sensor.station_id = station.id
+    LEFT JOIN parameter ON sensor.parameter_id = parameter.id
+    WHERE station.code LIKE ?station_code;"
+  query <- sqlInterpolate(con, sql, station_code = station_code)
+  data <- dbGetQuery(con, query)
+  data <- as.list(data$name)
+  dbDisconnect(con)
+  return(data)
 }
