@@ -10,7 +10,7 @@
 #' @export
 plot_main <- function(data, y, y_title){
   plot <- plot_ly() %>%
-    add_trace(x = data[["date_time"]],
+    add_trace(x = data[["timestamp"]],
               y = data[[y]],
               type = 'scatter',
               mode = 'lines',

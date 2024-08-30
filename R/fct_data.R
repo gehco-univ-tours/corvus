@@ -1,8 +1,7 @@
-#' Get raw data from database
+#' Get measurement data from database
 #'
 #' @param con PqConnection: database connection
-#' @param station character: station name
-#' @param parameter character: parameter name
+#' @param sensor integer: sensor id
 #' @param start_date character: start date in format 'YYYY-MM-DD'
 #' @param end_date character: end date in format 'YYYY-MM-DD'
 #'
@@ -13,41 +12,13 @@
 #'
 #' @examples
 #' con <- db_con()
-#' data_get_raw_data(con, "BE", "level", "2019-01-05", "2021-12-26")
-data_get_raw_data <- function(con, station, parameter, start_date, end_date){
-  sql <- "SELECT date_time, ?station FROM ?parameter WHERE date_time >= ?start_date AND date_time <= ?end_date"
-  query <- sqlInterpolate(con, sql, station = SQL(station),
-                          parameter = dbQuoteIdentifier(con, parameter),
-                          start_date = start_date, end_date = end_date)
+#' data_get_measurement(con, 2, "2019-01-05", "2021-12-26")
+data_get_measurement <- function(con, sensor, start_date, end_date){
+  sql <- "SELECT timestamp, value, value_corr FROM measurement WHERE timestamp >= ?start_date AND timestamp <= ?end_date
+    AND sensor_id = ?sensor;"
+  query <- sqlInterpolate(con, sql, start_date = start_date, end_date = end_date,
+                          sensor = sensor)
   data <- dbGetQuery(con, query)
-  dbDisconnect(con)
-  return(data)
-}
-
-#' Get corr data from database
-#'
-#' @param con PqConnection: database connection
-#' @param station character: station name
-#' @param parameter character: parameter name
-#' @param start_date character: start date in format 'YYYY-MM-DD'
-#' @param end_date character: end date in format 'YYYY-MM-DD'
-#'
-#' @return data.frame
-#' @export
-#'
-#' @importFrom glue glue
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
-#'
-#' @examples
-#' con <- db_con()
-#' data_get_corr_data(con, "BE", "level", "2019-01-05", "2021-12-26")
-data_get_corr_data <- function(con, station, parameter, start_date, end_date){
-  parameter_corr <- paste0(parameter, "_corr")
-  sql <- "SELECT date_time, ?station FROM ?parameter_corr WHERE date_time >= ?start_date AND date_time <= ?end_date"
-  query <- sqlInterpolate(con, sql, station = SQL(station),
-                          parameter_corr = dbQuoteIdentifier(con, parameter_corr),
-                          start_date = start_date, end_date = end_date)
-  data <- DBI::dbGetQuery(con, query)
   dbDisconnect(con)
   return(data)
 }

@@ -4,14 +4,16 @@
 \alias{compile_raw}
 \title{Compile raw data into database}
 \usage{
-compile_raw(con, station, parameter)
+compile_raw(con, station, parameter, sensor)
 }
 \arguments{
 \item{con}{PqConnection: database connection}
 
-\item{station}{string: station name}
+\item{station}{character: station code}
 
-\item{parameter}{string: parameter name}
+\item{parameter}{character: parameter name}
+
+\item{sensor}{integer: sensor id}
 }
 \value{
 string: message

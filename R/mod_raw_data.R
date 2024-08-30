@@ -146,8 +146,9 @@ mod_raw_data_server <- function(id){
     ### REACTIVES ####
 
     r_locals <- reactiveValues(
-      raw_data = NULL,
-      corr_data = NULL,
+      station_id = NULL,
+      sensor_id = NULL,
+      measurement = NULL,
       plot = NULL,
       corr_plot = FALSE,
       edit_plot = FALSE,
@@ -172,10 +173,18 @@ mod_raw_data_server <- function(id){
 
     ### EVENT ####
 
-    #### Station parameters ####
+    #### Station ####
     observeEvent(input$station, {
+      r_locals$station_id <- params_get_station_id(db_con(), input$station)
+      r_locals$userinfo$station <- glue::glue("Station ID: {r_locals$station_id}")
       updateSelectInput(session, "parameter",
                         choices = params_get_parameters(db_con(), input$station))
+    })
+
+    #### Parameter ####
+    observeEvent(input$parameter, {
+      r_locals$sensor_id <- params_get_sensor_id(db_con(), input$station, input$parameter)
+      r_locals$userinfo$parameter <- glue::glue("Sensor ID: {r_locals$sensor_id}")
     })
 
     #### Compile bttn ####
@@ -183,7 +192,8 @@ mod_raw_data_server <- function(id){
       r_locals$userinfo$processing = "Compiling raw data"
         data <- compile_raw(con = db_con(),
                             station = input$station,
-                            parameter = input$parameter)
+                            parameter = input$parameter,
+                            sensor = r_locals$sensor_id)
         if (!is.null(data)) {
           r_locals$userinfo$processing = data
         } else {
@@ -193,13 +203,12 @@ mod_raw_data_server <- function(id){
 
     #### Plot bttn ####
     observeEvent(input$plot_raw_data, {
-      r_locals$corr_data <- data_get_corr_data(con = db_con(),
-                                         station = input$station,
-                                         parameter = input$parameter,
-                                         start_date = input$date[1],
-                                         end_date = input$date[2])
-      r_locals$plot <- plot_main(data = r_locals$corr_data,
-                                 y = input$station,
+      r_locals$measurement <- data_get_measurement(con = db_con(),
+                                                   sensor = r_locals$sensor_id,
+                                                   start_date = input$date[1],
+                                                   end_date = input$date[2])
+      r_locals$plot <- plot_main(data = r_locals$measurement,
+                                 y = "value_corr",
                                  y_title = input$parameter)
     })
 
@@ -358,13 +367,13 @@ mod_raw_data_server <- function(id){
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("deleteTraces", 1)
 
-        r_locals$corr_data <- data_get_corr_data(con = db_con(),
+        r_locals$measurement <- data_get_measurement(con = db_con(),
                                                  station = input$station,
                                                  parameter = input$parameter,
                                                  start_date = input$date[1],
                                                  end_date = input$date[2])
-        r_locals$plot <- plot_main(data = r_locals$corr_data,
-                                   y = input$station,
+        r_locals$plot <- plot_main(data = r_locals$measurement,
+                                   y = "value_corr",
                                    y_title = input$parameter)
       } else {
         r_locals$userinfo$processing <- "Fail insert edits"

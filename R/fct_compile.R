@@ -1,8 +1,9 @@
 #' Compile raw data into database
 #'
 #' @param con PqConnection: database connection
-#' @param station string: station name
-#' @param parameter string: parameter name
+#' @param station character: station code
+#' @param parameter character: parameter name
+#' @param sensor integer: sensor id
 #'
 #' @importFrom dplyr bind_rows mutate_all select distinct mutate filter arrange
 #' @importFrom lubridate ymd_hms dmy_hms
@@ -12,9 +13,7 @@
 #'
 #' @return string: message
 #' @export
-compile_raw <- function(con,
-                        station,
-                        parameter){
+compile_raw <- function(con, station, parameter, sensor){
 
   # create directory path
   dir <- system.file("ext_data", station, "raw_data", parameter, package = "louroux")
@@ -40,17 +39,8 @@ compile_raw <- function(con,
     filter(!is.na(timestamp)) %>%
     select(timestamp, data)
 
-  # get sensor id
-  sql_sensor <- "SELECT sensor.id
-    FROM sensor
-    JOIN station ON station.id = sensor.station_id
-    JOIN parameter ON parameter.id = sensor.parameter_id
-    WHERE station.code LIKE ?station AND parameter.name LIKE ?parameter;"
-  query_sensor <- sqlInterpolate(con, sql_sensor, station = station, parameter = parameter)
-  sensor_id <- dbGetQuery(con, query_sensor)$id
-
   compile <- compile %>%
-    mutate(sensor_id = rep(sensor_id, length(compile$timestamp)))
+    mutate(sensor_id = rep(sensor, length(compile$timestamp)))
 
   # insert data
   # Create the SQL statement for insertion
@@ -78,5 +68,5 @@ compile_raw <- function(con,
   # disconnect from the database
   dbDisconnect(con)
 
-  return(glue::glue("{parameter} table updated for {toupper(station)} station with {rows_affected} rows inserted"))
+  return(glue::glue("measurement table updated for {toupper(station)} station with {parameter} measures with {rows_affected} rows inserted"))
 }

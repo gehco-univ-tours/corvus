@@ -31,6 +31,25 @@ params_get_stations <- function(con){
   return(stations)
 }
 
+#' Station id
+#'
+#' This function returns the station id based on the station code.
+#'
+#' @param con PqConnection: database connection
+#' @param station_code string: station code
+#'
+#' @importFrom DBI dbGetQuery
+#'
+#' @return list
+#' @export
+params_get_station_id <- function(con, station_code){
+  sql <- "SELECT id FROM station WHERE code LIKE ?station_code;"
+  query <- sqlInterpolate(con, sql, station_code = station_code)
+  station_id <- dbGetQuery(con, query)$id
+  dbDisconnect(con)
+  return(station_id)
+}
+
 #' parameters list
 #'
 #' This function returns a list of parameters from the database.
@@ -52,4 +71,29 @@ params_get_parameters <- function(con, station_code){
   data <- as.list(data$name)
   dbDisconnect(con)
   return(data)
+}
+
+#' Sensor id
+#'
+#' This function returns the sensor id based on the station code and the parameter name.
+#'
+#' @param con PqConnection: database connection
+#' @param station_code string: station code
+#' @param parameter_name string: parameter name
+#'
+#' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery
+#'
+#' @return list
+#' @export
+params_get_sensor_id <- function(con, station_code, parameter_name){
+  sql <- "SELECT sensor.id
+    FROM sensor
+    JOIN station ON station.id = sensor.station_id
+    JOIN parameter ON parameter.id = sensor.parameter_id
+    WHERE station.code LIKE ?station_code AND parameter.name LIKE ?parameter_name;"
+  query <- sqlInterpolate(con, sql, station_code = station_code, parameter_name = parameter_name)
+  sensor_id <- dbGetQuery(con, query)$id
+  dbDisconnect(con)
+  return(sensor_id)
 }
