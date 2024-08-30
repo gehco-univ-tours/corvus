@@ -172,7 +172,7 @@ mod_raw_data_server <- function(id){
 
     ### EVENT ####
 
-    #### Station parameter ####
+    #### Station parameters ####
     observeEvent(input$station, {
       updateSelectInput(session, "parameter",
                         choices = params_get_parameters(db_con(), input$station))
