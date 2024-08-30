@@ -33,7 +33,7 @@ mod_raw_data_ui <- function(id){
                       choices = NULL)
         ),
         column(
-          width = 3,
+          width = 2,
           dateRangeInput(inputId = ns("date"),
                          label = "Date",
                          start =  "2019-01-01",
@@ -41,14 +41,20 @@ mod_raw_data_ui <- function(id){
                          )
         ),
         column(
-          width = 3,
+          width = 1,
           tags$div(style = "margin-top: 20px;"),
-          actionButton(inputId = ns("plot_raw_data"),
-                       label = "Plot raw data"),
-          tags$div(style = "margin-bottom: 20px;"),
+          actionButton(inputId = ns("plot_valid_data"),
+                       label = "Plot valid data"),
+          tags$div(style = "margin-bottom: 20px;")
         ),
         column(
-          width = 2,
+          width = 1,
+          tags$div(style = "margin-top: 20px;"),
+          uiOutput(ns("plot_raw_data_ui")),
+          tags$div(style = "margin-bottom: 20px;")
+        ),
+        column(
+          width = 3,
           tags$div(style = "margin-top: 20px;"),
           actionButton(inputId = ns("compile_raw_data"),
                        label = "Compile raw data")
@@ -131,6 +137,7 @@ mod_raw_data_server <- function(id){
     output$printcheck = renderPrint({
       tryCatch({
         # event_data("plotly_hover")
+        print(r_locals$plot_layer)
         print(input$data)
         print("exists")
       },
@@ -150,6 +157,7 @@ mod_raw_data_server <- function(id){
       sensor_id = NULL,
       measurement = NULL,
       plot = NULL,
+      plot_layer = NULL,
       corr_plot = FALSE,
       edit_plot = FALSE,
       userinfo = list("User information"),
@@ -202,7 +210,7 @@ mod_raw_data_server <- function(id){
     })
 
     #### Plot bttn ####
-    observeEvent(input$plot_raw_data, {
+    observeEvent(input$plot_valid_data, {
       r_locals$measurement <- data_get_measurement(con = db_con(),
                                                    sensor = r_locals$sensor_id,
                                                    start_date = input$date[1],
@@ -210,6 +218,28 @@ mod_raw_data_server <- function(id){
       r_locals$plot <- plot_main(data = r_locals$measurement,
                                  y = "value_corr",
                                  y_title = input$parameter)
+
+      r_locals$plot_layer <- 1
+
+      # add renderUI action button for plot_raw_data_ui
+      output$plot_raw_data_ui <- renderUI({
+        actionButton(inputId = ns("plot_raw_data"),
+                     label = "Plot raw data")
+      })
+    })
+
+    #### Plot raw data bttn ####
+    observeEvent(input$plot_raw_data, {
+
+      plot_raw <- plot_add_raw_trace(data = r_locals$measurement,
+                                       y = "value",
+                                       y_label = input$parameter)
+
+      plotlyProxy("plot") %>%
+        plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
+        plotlyProxyInvoke("addTraces", plot_raw, r_locals$plot_layer)
+
+      r_locals$plot_layer <- r_locals$plot_layer+1
     })
 
     #### Edition mode UI ####
@@ -341,8 +371,10 @@ mod_raw_data_server <- function(id){
                                        y_label = input$parameter)
 
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 1) %>%
-          plotlyProxyInvoke("addTraces", plot_edit, 1)
+          plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
+          plotlyProxyInvoke("addTraces", plot_edit, r_locals$plot_layer)
+
+        r_locals$plot_layer <- r_locals$plot_layer+1
     })
 
     #### Validate change ####
