@@ -57,7 +57,7 @@ plot_add_corr_trace <- function(data, y, y_label){
 #' @export
 plot_add_edit_trace <- function(data, y, y_label){
   trace <- list(
-    x = data[["date_time"]],
+    x = data[["timestamp"]],
     y = data[[y]],
     type = 'scatter',
     mode = 'lines',

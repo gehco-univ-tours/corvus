@@ -5,12 +5,13 @@
 #' @param con PqConnection: database connection
 #'
 #' @importFrom DBI dbGetQuery
+#' @importFrom stats setNames
 #'
 #' @return list
 #' @export
 params_get_authors <- function(con){
-  authors <- dbGetQuery(con, "SELECT DISTINCT name FROM author")
-  authors <- as.list(authors$name)
+  authors <- dbGetQuery(con, "SELECT id, name FROM author")
+  authors <- setNames(authors$id, authors$name)
   return(authors)
 }
 
@@ -96,4 +97,21 @@ params_get_sensor_id <- function(con, station_code, parameter_name){
   sensor_id <- dbGetQuery(con, query)$id
   dbDisconnect(con)
   return(sensor_id)
+}
+
+#' Correction type list
+#'
+#' This function returns a list of the type of correction available from the database.
+#'
+#' @param con PqConnection: database connection
+#'
+#' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery
+#'
+#' @return list
+#' @export
+params_get_correction_type <- function(con){
+  corrections <- dbGetQuery(con, "SELECT id, name FROM correction_type")
+  corrections <- setNames(corrections$id, corrections$name)
+  return(corrections)
 }

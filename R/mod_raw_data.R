@@ -223,10 +223,7 @@ mod_raw_data_server <- function(id){
         output$correction_ui <- renderUI({
           selectInput(inputId = ns("correction"),
                       label = "Correction",
-                      choices = c("Offset" = "offset",
-                                  "Deviation" = "deviation",
-                                  "Delete" = "delete",
-                                  "Interpolate" = "interpolate"))
+                      choices = params_get_correction_type(db_con()))
         })
         output$date_edit_ui <- renderUI({
           dateRangeInput(inputId = ns("date_edit"),
@@ -304,7 +301,7 @@ mod_raw_data_server <- function(id){
     ##### Edition mode ####
     observeEvent(input$correction, {
 
-      if (input$correction == "offset") {
+      if (input$correction == 1) { # offset
 
         output$value_offset_ui <- renderUI({
           numericInput(inputId = ns("offset_edit"),
@@ -335,15 +332,12 @@ mod_raw_data_server <- function(id){
 
     #### Plot change ####
     observeEvent(input$plot_edit, {
-      r_locals$edit_data <- data_get_raw_data(con = db_con(),
-                                              station = input$station,
-                                              parameter = input$parameter,
-                                              start_date = r_locals$start_datetime_edit,
-                                              end_date = r_locals$end_datetime_edit) %>%
-        mutate(!!input$station := .data[[input$station]] + input$value_offset)
+      r_locals$edit_data <- r_locals$measurement %>%
+        filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
+        mutate(value = value_corr + input$offset_edit)
 
       plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
-                                       y = input$station,
+                                       y = "value",
                                        y_label = input$parameter)
 
         plotlyProxy("plot") %>%
@@ -354,12 +348,12 @@ mod_raw_data_server <- function(id){
     #### Validate change ####
     observeEvent(input$validate_edit, {
       data <- data_insert_offset(con = db_con(),
-                                 station = input$station,
-                                 parameter = input$parameter,
+                                 sensor = r_locals$sensor_id,
+                                 author = input$author,
                                  date_time_start = r_locals$start_datetime_edit,
                                  date_time_end = r_locals$end_datetime_edit,
-                                 offset_val = input$value_offset,
-                                 author = input$author,
+                                 correction_type = input$correction,
+                                 offset_val = input$offset_edit,
                                  comment = input$comment)
 
       if (!is.null(data)) {
@@ -368,10 +362,10 @@ mod_raw_data_server <- function(id){
           plotlyProxyInvoke("deleteTraces", 1)
 
         r_locals$measurement <- data_get_measurement(con = db_con(),
-                                                 station = input$station,
-                                                 parameter = input$parameter,
-                                                 start_date = input$date[1],
-                                                 end_date = input$date[2])
+                                                     sensor = r_locals$sensor_id,
+                                                     start_date = input$date[1],
+                                                     end_date = input$date[2])
+
         r_locals$plot <- plot_main(data = r_locals$measurement,
                                    y = "value_corr",
                                    y_title = input$parameter)
