@@ -71,3 +71,5 @@ data_insert_offset <- function(con, sensor, author, date_time_start, date_time_e
   return(glue::glue("measurement table updated for {sensor} sensor id with {rows_affected_correction} rows inserted and
                     {rows_affected_correction} rows inserted in the correction table."))
 }
+
+

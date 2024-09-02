@@ -88,7 +88,7 @@ mod_raw_data_ui <- function(id){
         column(
           width = 3,
           uiOutput(ns("value_offset_ui")),
-          uiOutput(ns("value_deviation_ui")),
+          uiOutput(ns("value_drift_ui")),
           uiOutput(ns("plot_edit_ui")),
           tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_edit_ui"))
@@ -338,13 +338,13 @@ mod_raw_data_server <- function(id){
                        label = "Offset value",
                        value = 0)
         })
-        output$value_deviation_ui <- renderUI({
+        output$value_drift_ui <- renderUI({
           NULL
         })
-      } else if (input$correction == "deviation"){
-        output$value_deviation_ui <- renderUI({
-          numericInput(inputId = ns("deviation_edit"),
-                       label = "Deviation end value",
+      } else if (input$correction == 2){
+        output$value_drift_ui <- renderUI({
+          numericInput(inputId = ns("drift_edit"),
+                       label = "Drift end value",
                        value = 0)
         })
         output$value_offset_ui <- renderUI({
@@ -354,7 +354,7 @@ mod_raw_data_server <- function(id){
         output$value_offset_ui <- renderUI({
           NULL
         })
-        output$value_deviation_ui <- renderUI({
+        output$value_drift_ui <- renderUI({
           NULL
         })
       }
