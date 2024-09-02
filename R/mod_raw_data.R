@@ -157,6 +157,9 @@ mod_raw_data_server <- function(id){
       sensor_id = NULL,
       measurement = NULL,
       plot = NULL,
+      valid_plot_layer = FALSE,
+      raw_plot_layer = FALSE,
+      edit_plot_layer = FALSE,
       plot_layer = NULL,
       corr_plot = FALSE,
       edit_plot = FALSE,
@@ -219,6 +222,7 @@ mod_raw_data_server <- function(id){
                                  y = "value_corr",
                                  y_title = input$parameter)
 
+      r_locals$valid_plot_layer <- TRUE
       r_locals$plot_layer <- 1
 
       # add renderUI action button for plot_raw_data_ui
@@ -239,7 +243,11 @@ mod_raw_data_server <- function(id){
         plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
         plotlyProxyInvoke("addTraces", plot_raw, r_locals$plot_layer)
 
-      r_locals$plot_layer <- r_locals$plot_layer+1
+      if (r_locals$raw_plot_layer == FALSE){
+        r_locals$plot_layer <- r_locals$plot_layer+1
+        r_locals$raw_plot_layer <- TRUE
+      }
+
     })
 
     #### Edition mode UI ####
@@ -341,7 +349,7 @@ mod_raw_data_server <- function(id){
         output$value_drift_ui <- renderUI({
           NULL
         })
-      } else if (input$correction == 2){
+      } else if (input$correction == 2){ # drift
         output$value_drift_ui <- renderUI({
           numericInput(inputId = ns("drift_edit"),
                        label = "Drift end value",
@@ -362,31 +370,40 @@ mod_raw_data_server <- function(id){
 
     #### Plot change ####
     observeEvent(input$plot_edit, {
-      r_locals$edit_data <- r_locals$measurement %>%
-        filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
-        mutate(value = value_corr + input$offset_edit)
+
+      if (input$correction == 1) { # offset
+        r_locals$edit_data <- r_locals$measurement %>%
+          filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
+          mutate(edit = value_corr + input$offset_edit)
+      } else if (input$correction == 2) { # drift
+        r_locals$edit_data <- r_locals$measurement %>%
+          filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
+          mutate(edit = data_edit_drift(timestamp, value_corr, input$drift_edit))
+      }
 
       plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
-                                       y = "value",
+                                       y = "edit",
                                        y_label = input$parameter)
 
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
           plotlyProxyInvoke("addTraces", plot_edit, r_locals$plot_layer)
 
-        r_locals$plot_layer <- r_locals$plot_layer+1
+        if (r_locals$edit_plot_layer == FALSE){
+          r_locals$plot_layer <- r_locals$plot_layer+1
+          r_locals$edit_plot_layer <- TRUE
+        }
     })
 
     #### Validate change ####
     observeEvent(input$validate_edit, {
-      data <- data_insert_offset(con = db_con(),
-                                 sensor = r_locals$sensor_id,
-                                 author = input$author,
-                                 date_time_start = r_locals$start_datetime_edit,
-                                 date_time_end = r_locals$end_datetime_edit,
-                                 correction_type = input$correction,
-                                 offset_val = input$offset_edit,
-                                 comment = input$comment)
+      data <- data_update_measurement(con = db_con(),
+                                      data = r_locals$edit_data,
+                                      sensor = r_locals$sensor_id,
+                                      author = input$author,
+                                      correction_type = input$correction,
+                                      value = input$offset_edit,
+                                      comment = input$comment)
 
       if (!is.null(data)) {
         r_locals$userinfo$processing = data
@@ -401,6 +418,9 @@ mod_raw_data_server <- function(id){
         r_locals$plot <- plot_main(data = r_locals$measurement,
                                    y = "value_corr",
                                    y_title = input$parameter)
+
+        r_locals$valid_plot_layer <- TRUE
+        r_locals$plot_layer <- 1
       } else {
         r_locals$userinfo$processing <- "Fail insert edits"
       }
