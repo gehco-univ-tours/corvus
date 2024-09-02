@@ -8,6 +8,8 @@ params_get_parameters(con, station_code)
 }
 \arguments{
 \item{con}{PqConnection: database connection}
+
+\item{station_code}{string: station code}
 }
 \value{
 list

@@ -56,6 +56,7 @@ params_get_station_id <- function(con, station_code){
 #' This function returns a list of parameters from the database.
 #'
 #' @param con PqConnection: database connection
+#' @param station_code string: station code
 #'
 #' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
 #'

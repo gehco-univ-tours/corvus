@@ -20,7 +20,8 @@ numeric
 Create drift correction column to edit data frame.
 }
 \examples{
-data <- data.frame(timestamp = as.POSIXct(c("2021-01-01 00:00", "2021-01-02 00:00", "2021-01-03 00:00"), format = "\%Y-\%m-\%d \%H:\%M"),
+data <- data.frame(timestamp = as.POSIXct(c("2021-01-01 00:00", "2021-01-02 00:00",
+                                            "2021-01-03 00:00"), format = "\%Y-\%m-\%d \%H:\%M"),
                   value_corr = c(1, 2, 3)) \%>\%
-                  mutate(drift = data_edit_drift(timestamp, value_corr, 5))
+                  dplyr::mutate(edit = data_edit_drift(timestamp, value_corr, 5))
 }

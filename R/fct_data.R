@@ -29,13 +29,16 @@ data_get_measurement <- function(con, sensor, start_date, end_date){
 #' @param value_corr numeric: corrected value
 #' @param drift_value numeric: drift value
 #'
+#' @importFrom dplyr mutate
+#'
 #' @return numeric
 #' @export
 #'
 #' @examples
-#' data <- data.frame(timestamp = as.POSIXct(c("2021-01-01 00:00", "2021-01-02 00:00", "2021-01-03 00:00"), format = "%Y-%m-%d %H:%M"),
+#' data <- data.frame(timestamp = as.POSIXct(c("2021-01-01 00:00", "2021-01-02 00:00",
+#'                                             "2021-01-03 00:00"), format = "%Y-%m-%d %H:%M"),
 #'                   value_corr = c(1, 2, 3)) %>%
-#'                   mutate(drift = data_edit_drift(timestamp, value_corr, 5))
+#'                   dplyr::mutate(edit = data_edit_drift(timestamp, value_corr, 5))
 data_edit_drift <- function(timestamp, value_corr, drift_value) {
 
   # Ensure timestamps are sorted for proper calculation
@@ -73,7 +76,7 @@ data_edit_drift <- function(timestamp, value_corr, drift_value) {
 #' @param sensor integer: sensor id
 #' @param correction_type character: correction type id
 #' @param value numeric: offset value
-#' @param author character: author name
+#' @param author integer: author id
 #' @param comment character: comment
 #'
 #' @importFrom glue glue
@@ -84,10 +87,11 @@ data_edit_drift <- function(timestamp, value_corr, drift_value) {
 #'
 #' @examples
 #' con <- db_con()
-#' data <- data.frame(timestamp = as.POSIXct(c("2021-01-01 00:00", "2021-01-02 00:00", "2021-01-03 00:00"), format = "%Y-%m-%d %H:%M"),
+#' data <- data.frame(timestamp = as.POSIXct(c("2021-01-01 00:00", "2021-01-02 00:00",
+#'                                             "2021-01-03 00:00"), format = "%Y-%m-%d %H:%M"),
 #'                   value_corr = c(1, 2, 3),
 #'                   edit = c(3, 4, 5))
-#' data_update_drift(con, 2, "Louis Manière", 2, 0.5, "Louis Manière", "my comment")
+#' data_update_measurement(con, data, 2, 1, 2, 0.5, "my comment")
 data_update_measurement <- function(con, data, sensor, author, correction_type, value, comment){
 
   # get first and last date
@@ -129,4 +133,6 @@ data_update_measurement <- function(con, data, sensor, author, correction_type, 
   return(glue::glue("measurement table updated for {sensor} sensor id with {rows_affected_correction} rows inserted and
                     {rows_affected_correction} rows inserted in the correction table."))
 }
+
+
 
