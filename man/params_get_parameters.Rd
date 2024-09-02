@@ -4,7 +4,7 @@
 \alias{params_get_parameters}
 \title{parameters list}
 \usage{
-params_get_parameters(con)
+params_get_parameters(con, station_code)
 }
 \arguments{
 \item{con}{PqConnection: database connection}

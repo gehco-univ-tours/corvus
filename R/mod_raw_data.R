@@ -30,11 +30,10 @@ mod_raw_data_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("parameter"),
                       label = "Parameter",
-                      choices = params_get_parameters(db_con()),
-                      selected = "level")
+                      choices = NULL)
         ),
         column(
-          width = 3,
+          width = 2,
           dateRangeInput(inputId = ns("date"),
                          label = "Date",
                          start =  "2019-01-01",
@@ -42,14 +41,20 @@ mod_raw_data_ui <- function(id){
                          )
         ),
         column(
-          width = 3,
+          width = 1,
           tags$div(style = "margin-top: 20px;"),
-          actionButton(inputId = ns("plot_raw_data"),
-                       label = "Plot raw data"),
-          tags$div(style = "margin-bottom: 20px;"),
+          actionButton(inputId = ns("plot_valid_data"),
+                       label = "Plot valid data"),
+          tags$div(style = "margin-bottom: 20px;")
         ),
         column(
-          width = 2,
+          width = 1,
+          tags$div(style = "margin-top: 20px;"),
+          uiOutput(ns("plot_raw_data_ui")),
+          tags$div(style = "margin-bottom: 20px;")
+        ),
+        column(
+          width = 3,
           tags$div(style = "margin-top: 20px;"),
           actionButton(inputId = ns("compile_raw_data"),
                        label = "Compile raw data")
@@ -83,7 +88,7 @@ mod_raw_data_ui <- function(id){
         column(
           width = 3,
           uiOutput(ns("value_offset_ui")),
-          uiOutput(ns("value_deviation_ui")),
+          uiOutput(ns("value_drift_ui")),
           uiOutput(ns("plot_edit_ui")),
           tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_edit_ui"))
@@ -132,6 +137,7 @@ mod_raw_data_server <- function(id){
     output$printcheck = renderPrint({
       tryCatch({
         # event_data("plotly_hover")
+        print(r_locals$plot_layer)
         print(input$data)
         print("exists")
       },
@@ -147,9 +153,11 @@ mod_raw_data_server <- function(id){
     ### REACTIVES ####
 
     r_locals <- reactiveValues(
-      raw_data = NULL,
-      corr_data = NULL,
+      station_id = NULL,
+      sensor_id = NULL,
+      measurement = NULL,
       plot = NULL,
+      plot_layer = NULL,
       corr_plot = FALSE,
       edit_plot = FALSE,
       userinfo = list("User information"),
@@ -173,12 +181,27 @@ mod_raw_data_server <- function(id){
 
     ### EVENT ####
 
+    #### Station ####
+    observeEvent(input$station, {
+      r_locals$station_id <- params_get_station_id(db_con(), input$station)
+      r_locals$userinfo$station <- glue::glue("Station ID: {r_locals$station_id}")
+      updateSelectInput(session, "parameter",
+                        choices = params_get_parameters(db_con(), input$station))
+    })
+
+    #### Parameter ####
+    observeEvent(input$parameter, {
+      r_locals$sensor_id <- params_get_sensor_id(db_con(), input$station, input$parameter)
+      r_locals$userinfo$parameter <- glue::glue("Sensor ID: {r_locals$sensor_id}")
+    })
+
     #### Compile bttn ####
     observeEvent(input$compile_raw_data, {
       r_locals$userinfo$processing = "Compiling raw data"
         data <- compile_raw(con = db_con(),
                             station = input$station,
-                            parameter = input$parameter)
+                            parameter = input$parameter,
+                            sensor = r_locals$sensor_id)
         if (!is.null(data)) {
           r_locals$userinfo$processing = data
         } else {
@@ -187,15 +210,36 @@ mod_raw_data_server <- function(id){
     })
 
     #### Plot bttn ####
-    observeEvent(input$plot_raw_data, {
-      r_locals$corr_data <- data_get_corr_data(con = db_con(),
-                                         station = input$station,
-                                         parameter = input$parameter,
-                                         start_date = input$date[1],
-                                         end_date = input$date[2])
-      r_locals$plot <- plot_main(data = r_locals$corr_data,
-                                 y = input$station,
+    observeEvent(input$plot_valid_data, {
+      r_locals$measurement <- data_get_measurement(con = db_con(),
+                                                   sensor = r_locals$sensor_id,
+                                                   start_date = input$date[1],
+                                                   end_date = input$date[2])
+      r_locals$plot <- plot_main(data = r_locals$measurement,
+                                 y = "value_corr",
                                  y_title = input$parameter)
+
+      r_locals$plot_layer <- 1
+
+      # add renderUI action button for plot_raw_data_ui
+      output$plot_raw_data_ui <- renderUI({
+        actionButton(inputId = ns("plot_raw_data"),
+                     label = "Plot raw data")
+      })
+    })
+
+    #### Plot raw data bttn ####
+    observeEvent(input$plot_raw_data, {
+
+      plot_raw <- plot_add_raw_trace(data = r_locals$measurement,
+                                       y = "value",
+                                       y_label = input$parameter)
+
+      plotlyProxy("plot") %>%
+        plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
+        plotlyProxyInvoke("addTraces", plot_raw, r_locals$plot_layer)
+
+      r_locals$plot_layer <- r_locals$plot_layer+1
     })
 
     #### Edition mode UI ####
@@ -209,10 +253,7 @@ mod_raw_data_server <- function(id){
         output$correction_ui <- renderUI({
           selectInput(inputId = ns("correction"),
                       label = "Correction",
-                      choices = c("Offset" = "offset",
-                                  "Deviation" = "deviation",
-                                  "Delete" = "delete",
-                                  "Interpolate" = "interpolate"))
+                      choices = params_get_correction_type(db_con()))
         })
         output$date_edit_ui <- renderUI({
           dateRangeInput(inputId = ns("date_edit"),
@@ -290,20 +331,20 @@ mod_raw_data_server <- function(id){
     ##### Edition mode ####
     observeEvent(input$correction, {
 
-      if (input$correction == "offset") {
+      if (input$correction == 1) { # offset
 
         output$value_offset_ui <- renderUI({
           numericInput(inputId = ns("offset_edit"),
                        label = "Offset value",
                        value = 0)
         })
-        output$value_deviation_ui <- renderUI({
+        output$value_drift_ui <- renderUI({
           NULL
         })
-      } else if (input$correction == "deviation"){
-        output$value_deviation_ui <- renderUI({
-          numericInput(inputId = ns("deviation_edit"),
-                       label = "Deviation end value",
+      } else if (input$correction == 2){
+        output$value_drift_ui <- renderUI({
+          numericInput(inputId = ns("drift_edit"),
+                       label = "Drift end value",
                        value = 0)
         })
         output$value_offset_ui <- renderUI({
@@ -313,7 +354,7 @@ mod_raw_data_server <- function(id){
         output$value_offset_ui <- renderUI({
           NULL
         })
-        output$value_deviation_ui <- renderUI({
+        output$value_drift_ui <- renderUI({
           NULL
         })
       }
@@ -321,31 +362,30 @@ mod_raw_data_server <- function(id){
 
     #### Plot change ####
     observeEvent(input$plot_edit, {
-      r_locals$edit_data <- data_get_raw_data(con = db_con(),
-                                              station = input$station,
-                                              parameter = input$parameter,
-                                              start_date = r_locals$start_datetime_edit,
-                                              end_date = r_locals$end_datetime_edit) %>%
-        mutate(!!input$station := .data[[input$station]] + input$value_offset)
+      r_locals$edit_data <- r_locals$measurement %>%
+        filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
+        mutate(value = value_corr + input$offset_edit)
 
       plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
-                                       y = input$station,
+                                       y = "value",
                                        y_label = input$parameter)
 
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 1) %>%
-          plotlyProxyInvoke("addTraces", plot_edit, 1)
+          plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
+          plotlyProxyInvoke("addTraces", plot_edit, r_locals$plot_layer)
+
+        r_locals$plot_layer <- r_locals$plot_layer+1
     })
 
     #### Validate change ####
     observeEvent(input$validate_edit, {
       data <- data_insert_offset(con = db_con(),
-                                 station = input$station,
-                                 parameter = input$parameter,
+                                 sensor = r_locals$sensor_id,
+                                 author = input$author,
                                  date_time_start = r_locals$start_datetime_edit,
                                  date_time_end = r_locals$end_datetime_edit,
-                                 offset_val = input$value_offset,
-                                 author = input$author,
+                                 correction_type = input$correction,
+                                 offset_val = input$offset_edit,
                                  comment = input$comment)
 
       if (!is.null(data)) {
@@ -353,13 +393,13 @@ mod_raw_data_server <- function(id){
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("deleteTraces", 1)
 
-        r_locals$corr_data <- data_get_corr_data(con = db_con(),
-                                                 station = input$station,
-                                                 parameter = input$parameter,
-                                                 start_date = input$date[1],
-                                                 end_date = input$date[2])
-        r_locals$plot <- plot_main(data = r_locals$corr_data,
-                                   y = input$station,
+        r_locals$measurement <- data_get_measurement(con = db_con(),
+                                                     sensor = r_locals$sensor_id,
+                                                     start_date = input$date[1],
+                                                     end_date = input$date[2])
+
+        r_locals$plot <- plot_main(data = r_locals$measurement,
+                                   y = "value_corr",
                                    y_title = input$parameter)
       } else {
         r_locals$userinfo$processing <- "Fail insert edits"

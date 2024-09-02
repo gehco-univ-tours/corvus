@@ -10,7 +10,7 @@
 #' @export
 plot_main <- function(data, y, y_title){
   plot <- plot_ly() %>%
-    add_trace(x = data[["date_time"]],
+    add_trace(x = data[["timestamp"]],
               y = data[[y]],
               type = 'scatter',
               mode = 'lines',
@@ -27,7 +27,7 @@ plot_main <- function(data, y, y_title){
   return(plot)
 }
 
-#' plotly add corr trace.
+#' plotly add raw data trace.
 #'
 #' @param data data frame containing the selected axis data.
 #' @param y text metric to be plotted on the y-axis.
@@ -35,14 +35,14 @@ plot_main <- function(data, y, y_title){
 #'
 #' @return list
 #' @export
-plot_add_corr_trace <- function(data, y, y_label){
+plot_add_raw_trace <- function(data, y, y_label){
   trace <- list(
-    x = data[["date_time"]],
+    x = data[["timestamp"]],
     y = data[[y]],
     type = 'scatter',
     mode = 'lines',
     name = "corr",
-    line = list(color = 'green')
+    line = list(color = 'lightblue')
   )
   return(trace)
 }
@@ -57,7 +57,7 @@ plot_add_corr_trace <- function(data, y, y_label){
 #' @export
 plot_add_edit_trace <- function(data, y, y_label){
   trace <- list(
-    x = data[["date_time"]],
+    x = data[["timestamp"]],
     y = data[[y]],
     type = 'scatter',
     mode = 'lines',

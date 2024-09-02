@@ -4,11 +4,14 @@
 #'
 #' @param con PqConnection: database connection
 #'
+#' @importFrom DBI dbGetQuery
+#' @importFrom stats setNames
+#'
 #' @return list
 #' @export
 params_get_authors <- function(con){
-  authors <- DBI::dbGetQuery(con, "SELECT DISTINCT name FROM authors")
-  authors <- as.list(authors$name)
+  authors <- dbGetQuery(con, "SELECT id, name FROM author")
+  authors <- setNames(authors$id, authors$name)
   return(authors)
 }
 
@@ -19,15 +22,33 @@ params_get_authors <- function(con){
 #' @param con PqConnection: database connection
 #'
 #' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery
 #'
 #' @return list
 #' @export
 params_get_stations <- function(con){
-  stations <- DBI::dbGetQuery(con, "SELECT DISTINCT name FROM stations")
-  stations <- c(stations$name)
-  upper_stations <- toupper(stations)
-  stations <- setNames(stations, upper_stations)
+  stations <- dbGetQuery(con, "SELECT code, name FROM station")
+  stations <- setNames(stations$code, stations$name)
   return(stations)
+}
+
+#' Station id
+#'
+#' This function returns the station id based on the station code.
+#'
+#' @param con PqConnection: database connection
+#' @param station_code string: station code
+#'
+#' @importFrom DBI dbGetQuery
+#'
+#' @return list
+#' @export
+params_get_station_id <- function(con, station_code){
+  sql <- "SELECT id FROM station WHERE code LIKE ?station_code;"
+  query <- sqlInterpolate(con, sql, station_code = station_code)
+  station_id <- dbGetQuery(con, query)$id
+  dbDisconnect(con)
+  return(station_id)
 }
 
 #' parameters list
@@ -36,10 +57,61 @@ params_get_stations <- function(con){
 #'
 #' @param con PqConnection: database connection
 #'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#'
 #' @return list
 #' @export
-params_get_parameters <- function(con){
-  parameters <- DBI::dbGetQuery(con, "SELECT DISTINCT name FROM parameters")
-  parameters <- as.list(parameters$name)
-  return(parameters)
+params_get_parameters <- function(con, station_code){
+  sql <- "SELECT parameter.name
+    FROM sensor
+    LEFT JOIN station ON sensor.station_id = station.id
+    LEFT JOIN parameter ON sensor.parameter_id = parameter.id
+    WHERE station.code LIKE ?station_code;"
+  query <- sqlInterpolate(con, sql, station_code = station_code)
+  data <- dbGetQuery(con, query)
+  data <- as.list(data$name)
+  dbDisconnect(con)
+  return(data)
+}
+
+#' Sensor id
+#'
+#' This function returns the sensor id based on the station code and the parameter name.
+#'
+#' @param con PqConnection: database connection
+#' @param station_code string: station code
+#' @param parameter_name string: parameter name
+#'
+#' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery
+#'
+#' @return list
+#' @export
+params_get_sensor_id <- function(con, station_code, parameter_name){
+  sql <- "SELECT sensor.id
+    FROM sensor
+    JOIN station ON station.id = sensor.station_id
+    JOIN parameter ON parameter.id = sensor.parameter_id
+    WHERE station.code LIKE ?station_code AND parameter.name LIKE ?parameter_name;"
+  query <- sqlInterpolate(con, sql, station_code = station_code, parameter_name = parameter_name)
+  sensor_id <- dbGetQuery(con, query)$id
+  dbDisconnect(con)
+  return(sensor_id)
+}
+
+#' Correction type list
+#'
+#' This function returns a list of the type of correction available from the database.
+#'
+#' @param con PqConnection: database connection
+#'
+#' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery
+#'
+#' @return list
+#' @export
+params_get_correction_type <- function(con){
+  corrections <- dbGetQuery(con, "SELECT id, name FROM correction_type")
+  corrections <- setNames(corrections$id, corrections$name)
+  return(corrections)
 }

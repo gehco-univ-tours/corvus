@@ -6,29 +6,29 @@
 \usage{
 data_insert_offset(
   con,
-  station,
-  parameter,
+  sensor,
+  author,
   date_time_start,
   date_time_end,
+  correction_type,
   offset_val,
-  author,
   comment
 )
 }
 \arguments{
 \item{con}{PqConnection: database connection}
 
-\item{station}{character: station name}
+\item{sensor}{integer: sensor id}
 
-\item{parameter}{character: parameter name}
+\item{author}{character: author name}
 
 \item{date_time_start}{character: start date in format 'YYYY-MM-DD HH:MM'}
 
 \item{date_time_end}{character: end date in format 'YYYY-MM-DD HH:MM'}
 
-\item{offset_val}{numeric: offset value}
+\item{correction_type}{character: correction type}
 
-\item{author}{character: author name}
+\item{offset_val}{numeric: offset value}
 
 \item{comment}{character: comment}
 }
@@ -40,8 +40,8 @@ Insert offset data into database
 }
 \examples{
 con <- db_con()
-data_insert_offset(con, "be", "level",
+data_insert_offset(con, 2, "Louis Mnaière",
   as.POSIXct("2021-01-01 00:00", format = "\%Y-\%m-\%d \%H:\%M"),
    as.POSIXct("2021-01-02 00:00", format = "\%Y-\%m-\%d \%H:\%M"),
-   0.5, "Louis Manière", "my comment")
+   offset, 0.5, "Louis Manière", "my comment")
 }

@@ -2,24 +2,22 @@
 % Please edit documentation in R/fct_compile.R
 \name{compile_raw}
 \alias{compile_raw}
-\title{Compile raw data}
+\title{Compile raw data into database}
 \usage{
-compile_raw(con, station, parameter, append = FALSE, col_names = TRUE)
+compile_raw(con, station, parameter, sensor)
 }
 \arguments{
 \item{con}{PqConnection: database connection}
 
-\item{station}{string: station name}
+\item{station}{character: station code}
 
-\item{parameter}{string: parameter name}
+\item{parameter}{character: parameter name}
 
-\item{append}{logical: append to existing file}
-
-\item{col_names}{logical: write column names}
+\item{sensor}{integer: sensor id}
 }
 \value{
 string: message
 }
 \description{
-Compile raw data
+Compile raw data into database
 }
