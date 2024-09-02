@@ -35,11 +35,3 @@ character
 \description{
 Update measurement data into database
 }
-\examples{
-con <- db_con()
-data <- data.frame(timestamp = as.POSIXct(c("2021-01-01 00:00", "2021-01-02 00:00",
-                                            "2021-01-03 00:00"), format = "\%Y-\%m-\%d \%H:\%M"),
-                  value_corr = c(1, 2, 3),
-                  edit = c(3, 4, 5))
-data_update_measurement(con, data, 2, 1, 2, 0.5, "my comment")
-}
