@@ -8,6 +8,7 @@ License: GPL (>= 3)
 Imports: 
     bslib,
     config (>= 0.3.2),
+    curl,
     DBI,
     dplyr,
     glue,
