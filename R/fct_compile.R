@@ -141,11 +141,12 @@ download_gb <- function(){
 #'
 #' @param con PqConnection: database connection
 #'
-#' @importFrom dplyr bind_rows mutate select distinct filter arrange rename_all rename
+#' @importFrom dplyr bind_rows mutate select distinct filter arrange rename_all rename across
 #' @importFrom lubridate dmy_hms
 #' @importFrom DBI dbSendQuery dbGetRowsAffected dbClearResult
 #' @importFrom glue glue
 #' @importFrom utils read.csv
+#' @importFrom tidyselect everything
 #'
 #' @return string: message
 #' @export

@@ -22,6 +22,7 @@ Imports:
     shinybusy,
     shinyWidgets,
     stats,
+    tidyselect,
     utils
 Suggests: 
     spelling,
