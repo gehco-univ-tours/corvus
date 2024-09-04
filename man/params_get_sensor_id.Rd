@@ -4,18 +4,18 @@
 \alias{params_get_sensor_id}
 \title{Sensor id}
 \usage{
-params_get_sensor_id(con, station_code, parameter_name)
+params_get_sensor_id(con, station_id, parameter_id)
 }
 \arguments{
 \item{con}{PqConnection: database connection}
 
-\item{station_code}{string: station code}
+\item{station_id}{string: station id}
 
-\item{parameter_name}{string: parameter name}
+\item{parameter_id}{string: parameter id}
 }
 \value{
 list
 }
 \description{
-This function returns the sensor id based on the station code and the parameter name.
+This function returns the sensor id based on the station and parameter id.
 }

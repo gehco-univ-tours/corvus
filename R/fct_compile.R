@@ -15,8 +15,17 @@
 #' @export
 compile_raw <- function(con, station, parameter, sensor){
 
+  # get station code from DB
+  sql <- "SELECT code FROM station WHERE id = ?station_id;"
+  query <- sqlInterpolate(con, sql, station_id = station)
+  station_name <- dbGetQuery(con, query)$code
+  # get parameter name from DB
+  sql <- "SELECT name FROM parameter WHERE id = ?parameter_id;"
+  query <- sqlInterpolate(con, sql, parameter_id = parameter)
+  parameter_name <- dbGetQuery(con, query)$name
+
   # create directory path
-  dir <- system.file("ext_data", station, "raw_data", parameter, package = "louroux")
+  dir <- system.file("ext_data", station_name, "raw_data", parameter_name, package = "louroux")
   # list all files
   files <- list.files(path = dir,
                                pattern = "*\\.csv$",
@@ -27,14 +36,14 @@ compile_raw <- function(con, station, parameter, sensor){
   }))
 
   # rename columns
-  colnames(compile) <- c("date", "time", parameter)
+  colnames(compile) <- c("date", "time", station_name)
 
   # clean and format data
   compile <- compile %>%
     mutate_all(~replace(., . == "---", NA)) %>%
     filter(!is.na(date) & !is.na(time)) %>%
-    mutate(timestamp = dmy_hms(paste(date, time, sep = " ")),
-           data = as.numeric(.data[[parameter]])) %>%
+    mutate(timestamp = dmy_hms(paste(date, time, sep = " "), tz = "Etc/GMT-1"),
+           data = as.numeric(.data[[station_name]])) %>%
     distinct(timestamp, .keep_all = TRUE) %>%
     filter(!is.na(timestamp)) %>%
     select(timestamp, data)
@@ -68,10 +77,10 @@ compile_raw <- function(con, station, parameter, sensor){
   # disconnect from the database
   dbDisconnect(con)
 
-  return(glue::glue("measurement table updated for {toupper(station)} station with {parameter} measures with {rows_affected} rows inserted"))
+  return(glue::glue("measurement table updated for {toupper(station_name)} station with {station_name} measures with {rows_affected} rows inserted"))
 }
 
-#' Compile raw data into database
+#' Download GB data from FTPS
 #'
 #' @importFrom curl curl_download new_handle
 #'
@@ -79,7 +88,7 @@ compile_raw <- function(con, station, parameter, sensor){
 #' @export
 download_gb <- function(){
 
-  ### FTP DIR ####
+  ### FTP DIR ##
   # FTPS params
   ftp_username <- Sys.getenv("LOUROUX_FTP_USER")
   ftp_password <- Sys.getenv("LOUROUX_FTP_PWD")
@@ -99,25 +108,21 @@ download_gb <- function(){
   # list all the csv files in the ftp directory
   ftp_data_files <- unlist(regmatches(output, gregexpr("\\b\\w+\\.CSV\\b", output)))
 
-  ### LOCAL DIR ####
+  ### LOCAL DIR ##
 
   # list all the ISTO csv files in local directory
   local_data_dir <- system.file("ext_data", "GB", package = "louroux")
   local_data_files <- list.files(path = local_data_dir, pattern = "*.CSV",
                                  full.names = FALSE)
-  ### DOWNLOAD ####
+  ### DOWNLOAD ##
 
   # get all the file names in FTP not already in local
   ftp_data_files_dl <- setdiff(ftp_data_files, local_data_files)
-
-  print(paste0(as.character(length(ftp_data_files_dl)), " files to download."))
 
   # download the files not in local
   downloaded_files <- c()
   for (file in ftp_data_files_dl){
     download_url <- paste0(url, file)
-    print(download_url)
-    print(file.path(local_data_dir, file))
     tryCatch({
       curl_download(download_url, file.path(local_data_dir, file),
                     handle = new_handle(ssl_verifypeer = FALSE, ssl_verifyhost = FALSE, ftp_use_epsv = FALSE))
@@ -128,7 +133,105 @@ download_gb <- function(){
       print(paste0("Error ext_data/GB/", file, ", retry later."))
     })
   }
-  return(paste0("Downloaded files: ", downloaded_files))
+  not_downloaded_files <- setdiff(ftp_data_files_dl, downloaded_files)
+  return(paste0("Not downloaded files: ", not_downloaded_files))
 }
 
+#' Compile GB raw data into database
+#'
+#' @param con PqConnection: database connection
+#'
+#' @importFrom dplyr bind_rows mutate select distinct filter arrange rename_all rename
+#' @importFrom lubridate dmy_hms
+#' @importFrom DBI dbSendQuery dbGetRowsAffected dbClearResult
+#' @importFrom glue glue
+#' @importFrom utils read.csv
+#'
+#' @return string: message
+#' @export
+compile_gb <- function(con){
 
+  station <- "GB"
+
+  # create directory path
+  dir <- system.file("ext_data", station, package = "louroux")
+  # list all files
+  files <- list.files(path = dir,
+                      pattern = "*\\.CSV$",
+                      full.names = TRUE)
+
+  compile <- data.frame()
+  for (file in files) {
+    # read the file
+    data <- read.csv(file, stringsAsFactors = FALSE, sep = ";", row.names = NULL, header = TRUE) %>%
+      filter (!is.na(Date) & !is.na(Time)) %>%
+      # format date/time to timestamp AND set timezone to UTC+1 without changing time (summer/winter)
+      mutate(timestamp = dmy_hms(paste(Date, Time, sep = " "), tz = "Etc/GMT-1")) %>%
+      select(c(-Date, -Time)) %>%
+      # remove non numeric values from the data but not the timestamp
+      mutate(across(-timestamp, ~ as.numeric(as.character(.)))) %>%
+      distinct(timestamp, .keep_all = TRUE) %>%
+      filter(!is.na(timestamp)) %>%
+      # Move timestamp to the first column
+      select(timestamp, everything()) %>%
+      # remove capital letters from the column names
+      rename_all(tolower)
+    # append the data to the compile data frame
+    compile <- bind_rows(compile, data)
+  }
+
+  compile <- compile %>%
+    distinct(timestamp, .keep_all = TRUE) %>%
+    arrange(timestamp)
+
+  # sensor id
+  sensor <- c("level"=4, "temperature"=5, "conductivity"=6, "turbidity"=7, "do_concentration"=8, "do_saturation"=9, "ph"=10)
+
+  # create list of data frame for each sensor with their respective sensor id
+  sensor_data <- list()
+  for (i in 1:length(sensor)){
+    sensor_data[[names(sensor)[[i]]]] <- compile %>%
+      select(timestamp, names(sensor)[i]) %>%
+      filter(!is.na(.data[[names(sensor)[i]]])) %>%
+      mutate(sensor_id = rep(sensor[[i]], length(timestamp))) %>%
+      rename(value = names(sensor)[i])
+  }
+
+  # Insert data into the database
+  # Create the SQL statement for insertion
+  sql <- glue::glue("INSERT INTO measurement (timestamp, sensor_id, value, value_corr)
+                     VALUES ($1, $2, $3, $4) ON CONFLICT (timestamp, sensor_id) DO NOTHING")
+
+  # create a list with the number of rows inserted for each sensor
+  rows_affected <- c()
+  for (i in 1:length(sensor_data)){
+    # Prepare the SQL statement
+    result <- dbSendQuery(con, sql,
+                          params = list(sensor_data[[i]]$timestamp,
+                                        sensor_data[[i]]$sensor_id,
+                                        sensor_data[[i]]$value,
+                                        sensor_data[[i]]$value))
+
+    # Check if the query was executed successfully
+    if (!inherits(result, "DBIResult")) {
+      stop("Query execution failed!")
+    }
+
+    # append the number of rows inserted to the rows_affected
+    rows_affected[names(sensor_data[i])] = dbGetRowsAffected(result)
+
+    # Close the result set
+    dbClearResult(result)
+  }
+
+  # disconnect from the database
+  dbDisconnect(con)
+
+  vector_text <- paste(names(rows_affected), rows_affected, sep = " = ", collapse = ", ")
+
+  full_message <- paste0("Number of rows inserted in measurement table for GB station: ", vector_text)
+
+  # return the number of rows inserted for each sensor
+  return(full_message)
+
+}

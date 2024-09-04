@@ -2,7 +2,7 @@
 % Please edit documentation in R/fct_compile.R
 \name{download_gb}
 \alias{download_gb}
-\title{Compile raw data into database}
+\title{Download GB data from FTPS}
 \usage{
 download_gb()
 }
@@ -10,5 +10,5 @@ download_gb()
 string: message
 }
 \description{
-Compile raw data into database
+Download GB data from FTPS
 }

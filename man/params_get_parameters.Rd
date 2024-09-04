@@ -4,12 +4,12 @@
 \alias{params_get_parameters}
 \title{parameters list}
 \usage{
-params_get_parameters(con, station_code)
+params_get_parameters(con, station_id)
 }
 \arguments{
 \item{con}{PqConnection: database connection}
 
-\item{station_code}{string: station code}
+\item{station_id}{string: station id}
 }
 \value{
 list
