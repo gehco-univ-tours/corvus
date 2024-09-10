@@ -17,8 +17,11 @@ plot_main <- function(data, y, y_title){
               name = "raw",
               line = list(color = 'black')
   ) %>%
-    layout(xaxis = list(
-      title = "Date time"),
+    layout(
+      xaxis = list(
+        title = "Date time",
+        rangeslider = list(type = "date")
+      ),
       yaxis = list(
         title = y_title
       ),

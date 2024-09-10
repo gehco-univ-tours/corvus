@@ -1,4 +1,4 @@
-#' raw_data UI Function
+#' edit UI Function
 #'
 #' @description A shiny Module.
 #'
@@ -10,7 +10,7 @@
 #' @importFrom plotly plotlyOutput
 #' @importFrom shinybusy add_busy_bar
 #' @importFrom shinyWidgets switchInput timeInput
-mod_raw_data_ui <- function(id){
+mod_edit_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
@@ -129,13 +129,13 @@ mod_raw_data_ui <- function(id){
   )
 }
 
-#' raw_data Server Functions
+#' edit Server Functions
 #'
 #' @noRd
 #' @importFrom plotly renderPlotly plotlyProxy plotlyProxyInvoke
 #' @importFrom dplyr mutate
 #' @importFrom lubridate hm ymd ymd_hm
-mod_raw_data_server <- function(id){
+mod_edit_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 

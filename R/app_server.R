@@ -6,7 +6,11 @@
 #' @noRd
 app_server <- function(input, output, session) {
 
+  ### REACTIVES ####
+
   # Modules
-  mod_raw_data_server("raw_data_1")
+  mod_raw_server("raw_1")
+  mod_edit_server("edit_1")
+  mod_valid_server("valid_1")
 
 }
