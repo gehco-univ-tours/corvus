@@ -13,7 +13,7 @@ plot_main <- function(data, y, y_title){
     add_trace(x = data[["timestamp"]],
               y = data[[y]],
               type = 'scatter',
-              mode = 'lines',
+              mode = 'lines+markers',
               name = "raw",
               line = list(color = 'black')
   ) %>%
@@ -68,4 +68,38 @@ plot_add_edit_trace <- function(data, y, y_label){
     line = list(color = 'orange')
   )
   return(trace)
+}
+
+#' plotly add missing periods.
+#'
+#' @param data data frame containing the selected axis data.
+#'
+#' @return list
+#' @export
+plot_add_missing_period <- function(data){
+
+  # add vertical bar for missing data
+  shapes_list <- list()
+
+  for (i in 1:nrow(data)){
+    shapes_list <- c(shapes_list,
+                     list(
+                       list(
+                         type = "rect",
+                         fillcolor = "tomato",
+                         opacity = 0.5,
+                         line = list(width = 0),
+                         x0 = data[i, "time_start"],
+                         x1 = data[i, "time_end"],
+                         xref = "x",
+                         y0 = 0,
+                         y1 = Inf,
+                         yref = "y"
+                       )
+                     )
+    )
+  }
+
+  proxy_layout <- list(shapes = shapes_list)
+  return(proxy_layout)
 }

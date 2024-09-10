@@ -2,8 +2,8 @@
 #'
 #' @param con PqConnection: database connection
 #' @param sensor integer: sensor id
-#' @param start_date character: start date in format 'YYYY-MM-DD'
-#' @param end_date character: end date in format 'YYYY-MM-DD'
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
 #'
 #' @return data.frame
 #' @export
@@ -126,5 +126,62 @@ data_update_measurement <- function(con, data, sensor, author, correction_type, 
                     {rows_affected_correction} rows inserted in the correction table."))
 }
 
-
-
+#' Get measurement missing period by interval
+#'
+#' @param con PqConnection: database connection
+#' @param sensor integer: sensor id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#' @param interval_time character: interval in format '1 day', '1 hour', '1 minute', '1 second'
+#'
+#' @return data.frame
+#' @export
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#'
+#' @examples
+#' con <- db_con()
+#' data_get_missing_data(con, 1, "2019-01-05", "2021-12-26", "15 minutes")
+data_get_missing_period <- function(con, sensor, start_date, end_date, interval_time){
+  sql <- "WITH missing_data AS (
+            SELECT
+                time_series.time AS timestamp,
+                ?sensor AS sensor_id
+            FROM
+                generate_series(
+                    ?start_date,
+                    ?end_date,
+                    CAST(?interval_time AS interval)
+                ) AS time_series(time)
+            LEFT JOIN
+                measurement
+            ON
+                time_series.time = measurement.timestamp
+                AND measurement.sensor_id = ?sensor
+            WHERE
+                measurement.timestamp IS NULL
+        ),
+        grouped_missing_data AS (
+            SELECT
+                timestamp,
+                sensor_id,
+                timestamp - INTERVAL ?interval_time * ROW_NUMBER() OVER (ORDER BY timestamp) AS gap_group
+            FROM
+                missing_data
+        )
+        SELECT
+            MIN(timestamp) AS time_start,
+            MAX(timestamp) AS time_end,
+            sensor_id
+        FROM
+            grouped_missing_data
+        GROUP BY
+            gap_group,
+            sensor_id
+        ORDER BY
+            time_start;"
+  query <- sqlInterpolate(con, sql, sensor = sensor, start_date = start_date, end_date = end_date, interval_time = interval_time)
+  data <- dbGetQuery(con, query)
+  dbDisconnect(con)
+  return(data)
+}

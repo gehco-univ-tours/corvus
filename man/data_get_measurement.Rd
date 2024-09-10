@@ -11,9 +11,9 @@ data_get_measurement(con, sensor, start_date, end_date)
 
 \item{sensor}{integer: sensor id}
 
-\item{start_date}{character: start date in format 'YYYY-MM-DD'}
+\item{start_date}{POSIXct: start date in format 'YYYY-MM-DD'}
 
-\item{end_date}{character: end date in format 'YYYY-MM-DD'}
+\item{end_date}{POSIXct: end date in format 'YYYY-MM-DD'}
 }
 \value{
 data.frame
