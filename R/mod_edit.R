@@ -53,18 +53,6 @@ mod_edit_ui <- function(id){
           uiOutput(ns("plot_raw_data_ui")),
           tags$div(style = "margin-bottom: 20px;")
         ),
-        column(
-          width = 1,
-          tags$div(style = "margin-top: 20px;"),
-          actionButton(inputId = ns("compile_raw_data"),
-                       label = "Compile raw data")
-        ),
-        column(
-          width = 2,
-          tags$div(style = "margin-top: 20px;"),
-          actionButton(inputId = ns("download_data"),
-                       label = "Download raw data")
-        ),
       ), # fluidRow
       tags$hr(), # add horizontal line
       #### Edition mode UI ####
@@ -201,30 +189,6 @@ mod_edit_server <- function(id){
       req(input$parameter) # avoid error at init
       r_locals$sensor_id <- params_get_sensor_id(db_con(), input$station, input$parameter)
       r_locals$userinfo$parameter <- glue::glue("Sensor ID: {r_locals$sensor_id}")
-    })
-
-    #### Download data ####
-    observeEvent(input$download_data, {
-      r_locals$userinfo$processing = "Downloading data"
-      data <- download_gb()
-      r_locals$userinfo$processing = data
-    })
-
-    #### Compile bttn ####
-    observeEvent(input$compile_raw_data, {
-        if (input$station == 3){ # GB station
-          data <- compile_gb(con = db_con())
-        } else {
-          data <- compile_raw(con = db_con(),
-                              station = input$station,
-                              parameter = input$parameter,
-                              sensor = r_locals$sensor_id)
-        }
-        if (!is.null(data)) {
-          r_locals$userinfo$processing <- data
-        } else {
-          r_locals$userinfo$processing <- "Fail compiling raw data"
-        }
     })
 
     #### Plot bttn ####

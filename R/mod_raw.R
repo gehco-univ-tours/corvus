@@ -35,12 +35,31 @@ mod_raw_ui <- function(id){
           actionButton(inputId = ns("plot_available_data"),
                        label = "Plot available data"),
           tags$div(style = "margin-bottom: 20px;")
-        )
+        ),
+        column(
+          width = 2,
+          tags$div(style = "margin-top: 20px;"),
+          actionButton(inputId = ns("compile_raw_data"),
+                       label = "Compile raw data")
+        ),
+        column(
+          width = 2,
+          tags$div(style = "margin-top: 20px;"),
+          actionButton(inputId = ns("download_data"),
+                       label = "Download raw data")
+        ),
       ), # fluidRow
       fluidRow(
         add_busy_bar(color = "#FF0000"),
         plotlyOutput(ns("plot"),
                      height = "800px")
+      ),
+      tags$hr(), # add horizontal line
+      fluidRow(
+        column(
+          width = 12,
+          verbatimTextOutput(ns("userinfo"))
+        )
       )
       ### UI DEV TOOLS ####
       ,fluidRow(
@@ -89,7 +108,10 @@ mod_raw_server <- function(id){
       r_locals$plot
     })
 
-    ### EVENT ####
+    #### userinfo ####
+    output$userinfo <- renderPrint({
+      r_locals$userinfo
+    })
 
     ### REACTIVES ####
 
@@ -99,8 +121,11 @@ mod_raw_server <- function(id){
       missing_data = NULL,
       plot = NULL,
       plot_layer = 0,
-      valid_plot_layer = FALSE
+      valid_plot_layer = FALSE,
+      userinfo = list("User information")
     )
+
+    ### EVENT ####
 
     #### Station ####
     observeEvent(input$station, {
@@ -112,6 +137,30 @@ mod_raw_server <- function(id){
     #### Plot bttn ####
     observeEvent(input$plot_available_data, {
       r_locals$plot <- plot_available_raw(station_id = input$station, date_start = input$date[1], date_end = input$date[2])
+    })
+
+    #### Compile bttn ####
+    observeEvent(input$compile_raw_data, {
+      if (input$station == 3){ # GB station
+        data <- compile_gb(con = db_con())
+      } else {
+        data <- compile_raw(con = db_con(),
+                            station = input$station,
+                            parameter = input$parameter,
+                            sensor = r_locals$sensor_id)
+      }
+      if (!is.null(data)) {
+        r_locals$userinfo$processing <- data
+      } else {
+        r_locals$userinfo$processing <- "Fail compiling raw data"
+      }
+    })
+
+    #### Download data ####
+    observeEvent(input$download_data, {
+      r_locals$userinfo$processing = "Downloading data"
+      data <- download_gb()
+      r_locals$userinfo$processing = data
     })
 
   })

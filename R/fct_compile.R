@@ -127,14 +127,14 @@ download_gb <- function(){
       curl_download(download_url, file.path(local_data_dir, file),
                     handle = new_handle(ssl_verifypeer = FALSE, ssl_verifyhost = FALSE, ftp_use_epsv = FALSE))
       downloaded_files <- c(downloaded_files, file)
-      print(downloaded_files)
+      print(file)
       print(paste0("Success ext_data/GB/", file, " downloaded."))
     }, error = function(e) {
       print(paste0("Error ext_data/GB/", file, ", retry later."))
     })
   }
   not_downloaded_files <- setdiff(ftp_data_files_dl, downloaded_files)
-  return(paste0("Not downloaded files: ", not_downloaded_files))
+  return(paste0("Not downloaded files: ", not_downloaded_files, "/ Success downloaded files: ", downloaded_files))
 }
 
 #' Compile GB raw data into database
