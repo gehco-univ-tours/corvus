@@ -9,7 +9,7 @@ params_get_parameters(con, station_id)
 \arguments{
 \item{con}{PqConnection: database connection}
 
-\item{station_id}{string: station id}
+\item{station_id}{integer: station id}
 }
 \value{
 list

@@ -9,9 +9,9 @@ params_get_sensor_id(con, station_id, parameter_id)
 \arguments{
 \item{con}{PqConnection: database connection}
 
-\item{station_id}{string: station id}
+\item{station_id}{integer: station id}
 
-\item{parameter_id}{string: parameter id}
+\item{parameter_id}{integer: parameter id}
 }
 \value{
 list

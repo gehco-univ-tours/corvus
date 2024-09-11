@@ -34,7 +34,7 @@ mod_valid_ui <- function(id){
         column(
           width = 2,
           selectInput(inputId = ns("interval"),
-                      label = "Parameter",
+                      label = "Interval",
                       choices = c("15 minutes", "1 minute", "5 seconds"),
                       selected = "15 minutes")
         ),
@@ -154,7 +154,7 @@ mod_valid_server <- function(id){
     #### Plot missing data bttn ####
     observeEvent(input$plot_missing_data, {
       r_locals$missing_data <- data_get_missing_period(con = db_con(),
-                                                       sensor = r_locals$sensor_id,
+                                                       sensor_id = r_locals$sensor_id,
                                                        start_date = input$date[1],
                                                        end_date = input$date[2],
                                                        interval_time = input$interval)

@@ -129,35 +129,31 @@ data_update_measurement <- function(con, data, sensor, author, correction_type, 
 #' Get measurement missing period by interval
 #'
 #' @param con PqConnection: database connection
-#' @param sensor integer: sensor id
+#' @param sensor_id integer: sensor id
 #' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
 #' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
 #' @param interval_time character: interval in format '1 day', '1 hour', '1 minute', '1 second'
 #'
-#' @return data.frame
-#' @export
-#'
 #' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
 #'
-#' @examples
-#' con <- db_con()
-#' data_get_missing_data(con, 1, "2019-01-05", "2021-12-26", "15 minutes")
-data_get_missing_period <- function(con, sensor, start_date, end_date, interval_time){
+#' @return data.frame
+#' @export
+data_get_missing_period <- function(con, sensor_id, start_date, end_date, interval_time){
   sql <- "WITH missing_data AS (
             SELECT
                 time_series.time AS timestamp,
-                ?sensor AS sensor_id
+                ?sensor_id AS sensor_id
             FROM
                 generate_series(
-                    ?start_date,
-                    ?end_date,
+                    (?start_date AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1'),
+                    (?end_date AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1'),
                     CAST(?interval_time AS interval)
                 ) AS time_series(time)
             LEFT JOIN
                 measurement
             ON
                 time_series.time = measurement.timestamp
-                AND measurement.sensor_id = ?sensor
+                AND measurement.sensor_id = ?sensor_id
             WHERE
                 measurement.timestamp IS NULL
         ),
@@ -180,8 +176,82 @@ data_get_missing_period <- function(con, sensor, start_date, end_date, interval_
             sensor_id
         ORDER BY
             time_start;"
-  query <- sqlInterpolate(con, sql, sensor = sensor, start_date = start_date, end_date = end_date, interval_time = interval_time)
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
   data <- dbGetQuery(con, query)
+  # convert time_start and time_end to POSIXct UTC+1 without changing time
+  data$time_start <- as.POSIXct(data$time_start, tz = "Etc/GMT-1")
+  data$time_end <- as.POSIXct(data$time_end, tz = "Etc/GMT-1")
+  dbDisconnect(con)
+  return(data)
+}
+
+#' Get measurement available period by interval
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#' @param interval_time character: interval in format '1 day', '1 hour', '1 minute', '1 second'
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#'
+#' @return data.frame
+#' @export
+data_get_available_period <- function(con, sensor_id, start_date, end_date, interval_time){
+  sql <- "WITH grouped_available_data AS
+          (SELECT
+          	timestamp,
+          	sensor_id,
+          	timestamp - INTERVAL ?interval_time * ROW_NUMBER() OVER (ORDER BY timestamp) AS gap_group
+          FROM
+          	measurement
+          WHERE sensor_id = ?sensor_id
+          	AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1') >= ?start_date
+          	AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1') <= ?end_date)
+          SELECT
+          	MIN(timestamp) AS time_start,
+          	MAX(timestamp) AS time_end,
+          	sensor_id
+          FROM
+          	grouped_available_data
+          GROUP BY
+          	gap_group,
+          	sensor_id
+          ORDER BY
+          	time_start;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
+  data <- dbGetQuery(con, query)
+  # convert time_start and time_end to POSIXct UTC+1 without changing time
+  data$time_start <- as.POSIXct(data$time_start, tz = "Etc/GMT-1")
+  data$time_end <- as.POSIXct(data$time_end, tz = "Etc/GMT-1")
+  dbDisconnect(con)
+  return(data)
+}
+
+#' Get min and max date from measurement table
+#'
+#' @param con PqConnection: database connection
+#' @param station_id integer: station id
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#'
+#' @return data.frame
+#' @export
+#' @examples
+#' con <- db_con()
+#' get_min_max_date(con, 3)
+get_min_max_date <- function(con, station_id){
+  sql <- "SELECT
+            MIN(timestamp) AS min_date,
+            MAX(timestamp) AS max_date
+    FROM measurement
+    WHERE sensor_id IN (SELECT id FROM sensor WHERE station_id = ?station_id);"
+  query <- sqlInterpolate(con, sql, station_id = station_id)
+  data <- dbGetQuery(con, query)
+
+  data$min_date <- as.POSIXct(data$min_date, tz = "Etc/GMT-1")
+  data$max_date <- as.POSIXct(data$max_date, tz = "Etc/GMT-1")
+
   dbDisconnect(con)
   return(data)
 }

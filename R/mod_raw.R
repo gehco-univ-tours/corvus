@@ -14,11 +14,46 @@ mod_raw_ui <- function(id){
   tagList(
     fluidPage(
       fluidRow(
+        column(
+          width = 2,
+          selectInput(inputId = ns("station"),
+                      label = "Stations",
+                      choices = params_get_stations(db_con()),
+                      selected = 3)
+        ),
+        column(
+          width = 2,
+          dateRangeInput(inputId = ns("date"),
+                         label = "Date",
+                         start =  get_min_max_date(db_con(), 3)$min_date,
+                         end =  get_min_max_date(db_con(), 3)$max_date
+          )
+        ),
+        column(
+          width = 2,
+          tags$div(style = "margin-top: 20px;"),
+          actionButton(inputId = ns("plot_available_data"),
+                       label = "Plot available data"),
+          tags$div(style = "margin-bottom: 20px;")
+        )
+      ), # fluidRow
+      fluidRow(
         add_busy_bar(color = "#FF0000"),
-        plotlyOutput(ns("plot"))
+        plotlyOutput(ns("plot"),
+                     height = "800px")
       )
-    )
-
+      ### UI DEV TOOLS ####
+      ,fluidRow(
+        column(
+          width = 4,
+          actionButton(ns("browser"), "browser")
+        ),
+        column(
+          width = 8,
+          verbatimTextOutput(ns("printcheck"))
+        )
+      ) # fluidRow DEV TOOLS
+    ) # fluidPage
   )
 }
 
@@ -28,6 +63,56 @@ mod_raw_ui <- function(id){
 mod_raw_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+
+    ### DEV TOOLS ####
+    output$printcheck = renderPrint({
+      tryCatch({
+        # event_data("plotly_hover")
+        print(r_locals$plot_layer)
+        print(input$data)
+        print("exists")
+      },
+      shiny.silent.error = function(e) {
+        print("doesn't exist")
+      }
+      )
+    })
+    observeEvent(input$browser, {
+      browser()
+    })
+
+    ### UI OUTPUT ####
+
+    #### plot ####
+
+    output$plot <- renderPlotly({
+      r_locals$plot
+    })
+
+    ### EVENT ####
+
+    ### REACTIVES ####
+
+    r_locals <- reactiveValues(
+      sensor_id = NULL,
+      available_data = NULL,
+      missing_data = NULL,
+      plot = NULL,
+      plot_layer = 0,
+      valid_plot_layer = FALSE
+    )
+
+    #### Station ####
+    observeEvent(input$station, {
+      r_locals$userinfo$station <- glue::glue("Station ID: {input$station}")
+      updateSelectInput(session, "parameter",
+                        choices = params_get_parameters(db_con(), input$station))
+    })
+
+    #### Plot bttn ####
+    observeEvent(input$plot_available_data, {
+      r_locals$plot <- plot_available_raw(station_id = input$station, date_start = input$date[1], date_end = input$date[2])
+    })
 
   })
 }
