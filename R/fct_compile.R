@@ -42,7 +42,7 @@ compile_raw <- function(con, station, parameter, sensor){
   compile <- compile %>%
     mutate_all(~replace(., . == "---", NA)) %>%
     filter(!is.na(date) & !is.na(time)) %>%
-    mutate(timestamp = dmy_hms(paste(date, time, sep = " "), tz = "Etc/GMT-1"),
+    mutate(timestamp = dmy_hms(paste(date, time, sep = " ")),
            data = as.numeric(.data[[station_name]])) %>%
     distinct(timestamp, .keep_all = TRUE) %>%
     filter(!is.na(timestamp)) %>%
@@ -167,7 +167,7 @@ compile_gb <- function(con){
     data <- read.csv(file, stringsAsFactors = FALSE, sep = ";", row.names = NULL, header = TRUE) %>%
       filter (!is.na(Date) & !is.na(Time)) %>%
       # format date/time to timestamp AND set timezone to UTC+1 without changing time (summer/winter)
-      mutate(timestamp = dmy_hms(paste(Date, Time, sep = " "), tz = "Etc/GMT-1")) %>%
+      mutate(timestamp = dmy_hms(paste(Date, Time, sep = " "))) %>%
       select(c(-Date, -Time)) %>%
       # remove non numeric values from the data but not the timestamp
       mutate(across(-timestamp, ~ as.numeric(as.character(.)))) %>%

@@ -145,8 +145,8 @@ data_get_missing_period <- function(con, sensor_id, start_date, end_date, interv
                 ?sensor_id AS sensor_id
             FROM
                 generate_series(
-                    (?start_date AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1'),
-                    (?end_date AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1'),
+                    ?start_date,
+                    ?end_date,
                     CAST(?interval_time AS interval)
                 ) AS time_series(time)
             LEFT JOIN
@@ -178,9 +178,6 @@ data_get_missing_period <- function(con, sensor_id, start_date, end_date, interv
             time_start;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
   data <- dbGetQuery(con, query)
-  # convert time_start and time_end to POSIXct UTC+1 without changing time
-  data$time_start <- as.POSIXct(data$time_start, tz = "Etc/GMT-1")
-  data$time_end <- as.POSIXct(data$time_end, tz = "Etc/GMT-1")
   dbDisconnect(con)
   return(data)
 }
@@ -206,8 +203,8 @@ data_get_available_period <- function(con, sensor_id, start_date, end_date, inte
           FROM
           	measurement
           WHERE sensor_id = ?sensor_id
-          	AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1') >= ?start_date
-          	AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'UTC+1') <= ?end_date)
+          	AND timestamp >= ?start_date
+          	AND timestamp <= ?end_date)
           SELECT
           	MIN(timestamp) AS time_start,
           	MAX(timestamp) AS time_end,
@@ -221,9 +218,6 @@ data_get_available_period <- function(con, sensor_id, start_date, end_date, inte
           	time_start;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
   data <- dbGetQuery(con, query)
-  # convert time_start and time_end to POSIXct UTC+1 without changing time
-  data$time_start <- as.POSIXct(data$time_start, tz = "Etc/GMT-1")
-  data$time_end <- as.POSIXct(data$time_end, tz = "Etc/GMT-1")
   dbDisconnect(con)
   return(data)
 }
@@ -248,10 +242,6 @@ get_min_max_date <- function(con, station_id){
     WHERE sensor_id IN (SELECT id FROM sensor WHERE station_id = ?station_id);"
   query <- sqlInterpolate(con, sql, station_id = station_id)
   data <- dbGetQuery(con, query)
-
-  data$min_date <- as.POSIXct(data$min_date, tz = "Etc/GMT-1")
-  data$max_date <- as.POSIXct(data$max_date, tz = "Etc/GMT-1")
-
   dbDisconnect(con)
   return(data)
 }
