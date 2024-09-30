@@ -161,6 +161,9 @@ compile_gb <- function(con){
                       pattern = "*\\.CSV$",
                       full.names = TRUE)
 
+  # remove file with size < 2 KB
+  files <- files[sapply(files, function(x) file.info(x)$size > 2000)]
+
   compile <- data.frame()
   for (file in files) {
     # read the file
