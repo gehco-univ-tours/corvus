@@ -13,7 +13,7 @@ mod_sites_ui <- function(id){
   tagList(
     fluidPage(
       fluidRow(
-        leafletOutput("sites_map")
+        leafletOutput(ns("map"), height = 400),
       )
 
       ### UI DEV TOOLS ####
@@ -35,9 +35,57 @@ mod_sites_ui <- function(id){
 #' sites Server Functions
 #'
 #' @noRd
+#'
+#' @importFrom leaflet leaflet renderLeaflet addTiles addMarkers fitBounds addScaleBar scaleBarOptions labelOptions
 mod_sites_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+
+    ### DEV TOOLS ####
+    output$printcheck = renderPrint({
+      tryCatch({
+        print("exists")
+        print(input$map_marker_click)
+      },
+      shiny.silent.error = function(e) {
+        print("doesn't exist")
+      }
+      )
+    })
+    observeEvent(input$browser, {
+      browser()
+    })
+
+    ### REACTIVES ####
+
+    r_locals <- reactiveValues(
+      stations = NULL
+    )
+
+    ### MAP ###
+
+    output$map <- renderLeaflet({
+
+      # get stations
+      r_locals$stations <- data_get_stations(db_con())
+      # Calculate map bounds to center on points
+      bounds <- list(
+        min_lng = min(r_locals$stations$longitude),
+        max_lng = max(r_locals$stations$longitude),
+        min_lat = min(r_locals$stations$latitude),
+        max_lat = max(r_locals$stations$latitude)
+      )
+
+      leaflet(data = r_locals$stations) %>%
+        addTiles() %>%
+        addMarkers(~longitude, ~latitude, label = ~name,
+                   labelOptions = labelOptions (permanent=TRUE, direction = "auto"),
+                   layerId = ~id  # Assign the ID as the layer ID for each marker
+                   ) %>%
+        fitBounds(bounds$min_lng, bounds$min_lat, bounds$max_lng, bounds$max_lat) %>%
+        addScaleBar(position = "bottomleft",
+                    scaleBarOptions(metric = TRUE, imperial = FALSE))
+    })
 
   })
 }
