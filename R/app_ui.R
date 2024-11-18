@@ -17,6 +17,7 @@ app_ui <- function(request) {
           "Louroux",
           style = "display: flex; float: left;"
         ),
+      tabPanel("Sites", mod_sites_ui("sites_1")),
       tabPanel("Raw Data", mod_raw_ui("raw_1")),
       tabPanel("Edition", mod_edit_ui("edit_1")),
       tabPanel("Validation", mod_valid_ui("valid_1"))
