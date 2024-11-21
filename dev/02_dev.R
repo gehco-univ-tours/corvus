@@ -20,7 +20,7 @@ attachment::att_amend_desc()
 
 ## Add modules ----
 ## Create a module infrastructure in R/
-golem::add_module(name = "sites", with_test = TRUE) # Name of the module
+golem::add_module(name = "stations", with_test = TRUE) # Name of the module
 golem::add_module(name = "raw", with_test = TRUE) # Name of the module
 golem::add_module(name = "edit", with_test = TRUE) # Name of the module
 golem::add_module(name = "valid", with_test = TRUE) # Name of the module

@@ -1,4 +1,4 @@
-#' sites UI Function
+#' Stations UI Function
 #'
 #' @description A shiny Module.
 #'
@@ -8,7 +8,7 @@
 #'
 #' @importFrom shiny NS tagList
 #' @importFrom leaflet leafletOutput
-mod_sites_ui <- function(id){
+mod_stations_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
@@ -32,12 +32,12 @@ mod_sites_ui <- function(id){
   )
 }
 
-#' sites Server Functions
+#' stations Server Functions
 #'
 #' @noRd
 #'
 #' @importFrom leaflet leaflet renderLeaflet addTiles addMarkers fitBounds addScaleBar scaleBarOptions labelOptions
-mod_sites_server <- function(id){
+mod_stations_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
@@ -91,7 +91,7 @@ mod_sites_server <- function(id){
 }
 
 ## To be copied in the UI
-# mod_sites_ui("sites_1")
+# mod_stations_ui("stations_1")
 
 ## To be copied in the server
-# mod_sites_server("sites_1")
+# mod_stations_server("stations_1")
