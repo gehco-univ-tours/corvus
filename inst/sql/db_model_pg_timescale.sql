@@ -67,16 +67,24 @@ CREATE TABLE correction (
     timestamp_start TIMESTAMPTZ NOT NULL,
     timestamp_end TIMESTAMPTZ NOT NULL,
     correction_type INTEGER NOT NULL REFERENCES correction_type(id),
-    value DOUBLE PRECISION NOT NULL, 
+    value DOUBLE PRECISION NOT NULL,
     comment TEXT
 );
 
 INSERT INTO correction_type (name) VALUES ('Offset'), ('Drift'), ('Delete'), ('Interpolation');
 
+CREATE TABLE intervention (
+    id SERIAL PRIMARY KEY,
+    timestamp_start TIMESTAMPTZ NOT NULL,
+    author_id INTEGER NOT NULL REFERENCES author(id),
+    station_id INTEGER NOT NULL REFERENCES station(id),
+    comment TEXT
+);
+
 -- Add view (optional)
 
 CREATE VIEW measurement_data AS (
-    SELECT 
+    SELECT
         station.code AS station,
         parameter.name AS parameter,
         measurement.timestamp AS timestamp,
