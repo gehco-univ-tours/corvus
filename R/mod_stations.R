@@ -37,7 +37,7 @@ mod_stations_ui <- function(id){
 #' @noRd
 #'
 #' @importFrom leaflet leaflet renderLeaflet addTiles addMarkers fitBounds addScaleBar scaleBarOptions labelOptions
-mod_stations_server <- function(id){
+mod_stations_server <- function(id, r_globals){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
@@ -58,25 +58,22 @@ mod_stations_server <- function(id){
 
     ### REACTIVES ####
 
-    r_locals <- reactiveValues(
-      stations = NULL
-    )
+    # r_locals <- reactiveValues(
+    # )
 
     ### MAP ###
 
     output$map <- renderLeaflet({
 
-      # get stations
-      r_locals$stations <- data_get_stations(db_con())
       # Calculate map bounds to center on points
       bounds <- list(
-        min_lng = min(r_locals$stations$longitude),
-        max_lng = max(r_locals$stations$longitude),
-        min_lat = min(r_locals$stations$latitude),
-        max_lat = max(r_locals$stations$latitude)
+        min_lng = min(r_globals$all_stations$longitude),
+        max_lng = max(r_globals$all_stations$longitude),
+        min_lat = min(r_globals$all_stations$latitude),
+        max_lat = max(r_globals$all_stations$latitude)
       )
 
-      leaflet(data = r_locals$stations) %>%
+      leaflet(data = r_globals$all_stations) %>%
         addTiles() %>%
         addMarkers(~longitude, ~latitude, label = ~name,
                    labelOptions = labelOptions (permanent=TRUE, direction = "auto"),
