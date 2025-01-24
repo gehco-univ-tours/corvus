@@ -36,8 +36,9 @@ mod_edit_ui <- function(id){
           width = 2,
           dateRangeInput(inputId = ns("date"),
                          label = "Date",
-                         start =  "2019-01-01",
-                         end =  "2019-02-28"
+                         # actual date - 1 month
+                         start =  Sys.Date() - 30,
+                         end =  Sys.Date()
                          )
         ),
         column(
