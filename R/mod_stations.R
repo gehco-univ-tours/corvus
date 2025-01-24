@@ -46,6 +46,7 @@ mod_stations_server <- function(id, r_globals){
       tryCatch({
         print("exists")
         print(input$map_marker_click)
+        print(r_globals$station)
       },
       shiny.silent.error = function(e) {
         print("doesn't exist")
@@ -82,6 +83,11 @@ mod_stations_server <- function(id, r_globals){
         fitBounds(bounds$min_lng, bounds$min_lat, bounds$max_lng, bounds$max_lat) %>%
         addScaleBar(position = "bottomleft",
                     scaleBarOptions(metric = TRUE, imperial = FALSE))
+    })
+
+    # get station id from click
+    observeEvent(input$map_marker_click,{
+      r_globals$station <- r_globals$all_stations[r_globals$all_stations$id == input$map_marker_click$id,]
     })
 
   })
