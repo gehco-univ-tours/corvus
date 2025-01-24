@@ -45,7 +45,6 @@ mod_stations_server <- function(id, r_globals){
     output$printcheck = renderPrint({
       tryCatch({
         print("exists")
-        print(input$map_marker_click)
         print(r_globals$station)
       },
       shiny.silent.error = function(e) {
@@ -56,11 +55,6 @@ mod_stations_server <- function(id, r_globals){
     observeEvent(input$browser, {
       browser()
     })
-
-    ### REACTIVES ####
-
-    # r_locals <- reactiveValues(
-    # )
 
     ### MAP ###
 
