@@ -245,3 +245,21 @@ get_min_max_date <- function(con, station_id){
   dbDisconnect(con)
   return(data)
 }
+
+#' Get all the station from database
+#'
+#' @param con PqConnection: database connection
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect
+#'
+#' @return data.frame
+#' @export
+#' @examples
+#' con <- db_con()
+#' data_get_stations(con)
+data_get_stations <- function(con){
+  sql <- "SELECT * FROM station;"
+  data <- dbGetQuery(con, sql)
+  dbDisconnect(con)
+  return(data)
+}

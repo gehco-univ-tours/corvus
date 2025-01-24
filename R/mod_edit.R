@@ -23,8 +23,7 @@ mod_edit_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = params_get_stations(db_con()),
-                      selected = "be")
+                      choices = params_get_stations(db_con()))
         ),
         column(
           width = 2,
@@ -124,8 +123,8 @@ mod_edit_ui <- function(id){
 #' @importFrom plotly renderPlotly plotlyProxy plotlyProxyInvoke
 #' @importFrom dplyr mutate
 #' @importFrom lubridate hm ymd ymd_hm
-mod_edit_server <- function(id){
-  moduleServer( id, function(input, output, session){
+mod_edit_server <- function(id, r_globals){
+  moduleServer(id, function(input, output, session){
     ns <- session$ns
 
     ### DEV TOOLS ####
@@ -178,11 +177,22 @@ mod_edit_server <- function(id){
 
     ### EVENT ####
 
+    ### UI ####
+    # update input$station if r_globals$station is not NULL
+    observeEvent(r_globals$station, {
+      updateSelectInput(session, "station", selected = r_globals$station)
+    })
+
+
     #### Station ####
     observeEvent(input$station, {
-      r_locals$userinfo$station <- glue::glue("Station ID: {input$station}")
-      updateSelectInput(session, "parameter",
-                        choices = params_get_parameters(db_con(), input$station))
+      if (is.null(r_globals$station) || input$station != r_globals$station$id) {
+        # update r_globals$station
+        r_globals$station <- r_globals$all_stations[r_globals$all_stations$id == input$station,]
+      }
+        r_locals$userinfo$station <- glue::glue("Station ID: {r_globals$station$id}")
+        updateSelectInput(session, "parameter",
+                          choices = params_get_parameters(db_con(), r_globals$station$id))
     })
 
     #### Parameter ####
@@ -198,6 +208,7 @@ mod_edit_server <- function(id){
                                                    sensor = r_locals$sensor_id,
                                                    start_date = input$date[1],
                                                    end_date = input$date[2])
+
       r_locals$plot <- plot_main(data = r_locals$measurement,
                                  y = "value_corr",
                                  y_title = input$parameter)
