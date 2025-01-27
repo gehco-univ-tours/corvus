@@ -10,13 +10,23 @@
 #' @importFrom plotly plotlyOutput
 #' @importFrom shinybusy add_busy_bar
 #' @importFrom shinyWidgets switchInput timeInput
+#' @importFrom shinyjs useShinyjs
 mod_edit_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
+      useShinyjs(),  # Initialize shinyjs
       fluidRow(
         add_busy_bar(color = "#FF0000"),
         plotlyOutput(ns("plot"))
+      ),
+      fluidRow(
+        column(
+          width = 2,
+          checkboxInput(inputId = ns("plot_raw_data"),
+                        label = "Plot raw data",
+                        value = FALSE)
+        ),
       ),
       fluidRow(
         column(
@@ -41,18 +51,18 @@ mod_edit_ui <- function(id){
                          )
         ),
         column(
-          width = 1,
+          width = 2,
           tags$div(style = "margin-top: 20px;"),
           actionButton(inputId = ns("plot_valid_data"),
                        label = "Plot valid data"),
           tags$div(style = "margin-bottom: 20px;")
         ),
-        column(
-          width = 1,
-          tags$div(style = "margin-top: 20px;"),
-          uiOutput(ns("plot_raw_data_ui")),
-          tags$div(style = "margin-bottom: 20px;")
-        ),
+      #   column(
+      #     width = 1,
+      #     tags$div(style = "margin-top: 20px;"),
+      #     uiOutput(ns("plot_raw_data_ui")),
+      #     tags$div(style = "margin-bottom: 20px;")
+      #   ),
       ), # fluidRow
       tags$hr(), # add horizontal line
       #### Edition mode UI ####
@@ -121,6 +131,7 @@ mod_edit_ui <- function(id){
 #'
 #' @noRd
 #' @importFrom plotly renderPlotly plotlyProxy plotlyProxyInvoke
+#' @importFrom shinyjs disable enable hide show
 #' @importFrom dplyr mutate
 #' @importFrom lubridate hm ymd ymd_hm
 mod_edit_server <- function(id, r_globals){
@@ -131,7 +142,8 @@ mod_edit_server <- function(id, r_globals){
     output$printcheck = renderPrint({
       tryCatch({
         # event_data("plotly_hover")
-        print(r_locals$plot_layer)
+        print(paste0("keep_raw_plot_layer = ", r_locals$keep_raw_plot_layer))
+        print(paste0("input$plot_raw_data = ", input$plot_raw_data))
         print(input$data)
         print("exists")
       },
@@ -150,9 +162,8 @@ mod_edit_server <- function(id, r_globals){
       sensor_id = NULL,
       measurement = NULL,
       plot = NULL,
-      valid_plot_layer = FALSE,
-      raw_plot_layer = FALSE,
-      edit_plot_layer = FALSE,
+      keep_raw_plot_layer = FALSE,
+      # valid_plot_layer = FALSE,
       plot_layer = NULL,
       corr_plot = FALSE,
       edit_plot = FALSE,
@@ -161,6 +172,10 @@ mod_edit_server <- function(id, r_globals){
       start_datetime_edit = NULL,
       end_datetime_edit = NULL
     )
+
+    ### INIT ####
+    shinyjs::disable("plot_raw_data")
+    shinyjs::disable("plot_edit")
 
     ### UI OUTPUT ####
 
@@ -183,7 +198,6 @@ mod_edit_server <- function(id, r_globals){
       updateSelectInput(session, "station", selected = r_globals$station)
     })
 
-
     #### Station ####
     observeEvent(input$station, {
       if (is.null(r_globals$station) || input$station != r_globals$station$id) {
@@ -204,6 +218,20 @@ mod_edit_server <- function(id, r_globals){
 
     #### Plot bttn ####
     observeEvent(input$plot_valid_data, {
+
+      shinyjs::enable("plot_raw_data")
+      shinyjs::enable("plot_edit")
+
+      # set input$plot_raw_data and input$plot_edit to FALSE before new plot
+      if (input$plot_raw_data == TRUE){
+        r_locals$keep_raw_plot_layer = TRUE
+        updateCheckboxInput(session, "plot_raw_data", value = FALSE)
+      }
+
+      if (input$plot_edit == TRUE){
+        updateCheckboxInput(session, "plot_edit", value = FALSE)
+      }
+
       r_locals$measurement <- data_get_measurement(con = db_con(),
                                                    sensor = r_locals$sensor_id,
                                                    start_date = input$date[1],
@@ -213,32 +241,29 @@ mod_edit_server <- function(id, r_globals){
                                  y = "value_corr",
                                  y_title = input$parameter)
 
-      r_locals$valid_plot_layer <- TRUE
-      r_locals$plot_layer <- 1
+      # redraw raw plot if input$plot_raw_data was TRUE
+      if (r_locals$keep_raw_plot_layer == TRUE){
+        updateCheckboxInput(session, "plot_raw_data", value = TRUE)
+        r_locals$keep_raw_plot_layer <- FALSE
+      }
 
-      # add renderUI action button for plot_raw_data_ui
-      output$plot_raw_data_ui <- renderUI({
-        actionButton(inputId = ns("plot_raw_data"),
-                     label = "Plot raw data")
-      })
     })
 
     #### Plot raw data bttn ####
     observeEvent(input$plot_raw_data, {
 
-      plot_raw <- plot_add_raw_trace(data = r_locals$measurement,
+      if (input$plot_raw_data == TRUE){
+        plot_raw <- plot_add_raw_trace(data = r_locals$measurement,
                                        y = "value",
                                        y_label = input$parameter)
 
-      plotlyProxy("plot") %>%
-        plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
-        plotlyProxyInvoke("addTraces", plot_raw, r_locals$plot_layer)
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("addTraces", plot_raw, 0) # z-index = 0 to be below valid data
 
-      if (r_locals$raw_plot_layer == FALSE){
-        r_locals$plot_layer <- r_locals$plot_layer+1
-        r_locals$raw_plot_layer <- TRUE
+      } else {
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("deleteTraces", 0)
       }
-
     })
 
     #### Edition mode UI ####
@@ -274,8 +299,9 @@ mod_edit_server <- function(id, r_globals){
                     value = "00:00")
         })
         output$plot_edit_ui <- renderUI({
-          actionButton(inputId = ns("plot_edit"),
-                       label = "Plot change")
+          checkboxInput(inputId = ns("plot_edit"),
+                       label = "Plot change",
+                       value = FALSE)
         })
         output$validate_edit_ui <- renderUI({
           actionButton(inputId = ns("validate_edit"),
@@ -362,28 +388,29 @@ mod_edit_server <- function(id, r_globals){
     #### Plot change ####
     observeEvent(input$plot_edit, {
 
-      if (input$correction == 1) { # offset
-        r_locals$edit_data <- r_locals$measurement %>%
-          filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
-          mutate(edit = value_corr + input$offset_edit)
-      } else if (input$correction == 2) { # drift
-        r_locals$edit_data <- r_locals$measurement %>%
-          filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
-          mutate(edit = data_edit_drift(timestamp, value_corr, input$drift_edit))
-      }
+      if(input$plot_edit == TRUE){
 
-      plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
-                                       y = "edit",
-                                       y_label = input$parameter)
-
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", r_locals$plot_layer) %>%
-          plotlyProxyInvoke("addTraces", plot_edit, r_locals$plot_layer)
-
-        if (r_locals$edit_plot_layer == FALSE){
-          r_locals$plot_layer <- r_locals$plot_layer+1
-          r_locals$edit_plot_layer <- TRUE
+        if (input$correction == 1) { # offset
+          r_locals$edit_data <- r_locals$measurement %>%
+            filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
+            mutate(edit = value_corr + input$offset_edit)
+        } else if (input$correction == 2) { # drift
+          r_locals$edit_data <- r_locals$measurement %>%
+            filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
+            mutate(edit = data_edit_drift(timestamp, value_corr, input$drift_edit))
         }
+
+        plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
+                                         y = "edit",
+                                         y_label = input$parameter)
+
+          plotlyProxy("plot") %>%
+            plotlyProxyInvoke("addTraces", plot_edit, 2) # z-index = 2 to be above valid data
+
+      } else {
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("deleteTraces", 2)
+      }
     })
 
     #### Validate change ####
@@ -398,8 +425,16 @@ mod_edit_server <- function(id, r_globals){
 
       if (!is.null(data)) {
         r_locals$userinfo$processing = data
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 1)
+
+        # set input$plot_raw_data and input$plot_edit to FALSE before new plot
+        if (input$plot_raw_data == TRUE){
+          r_locals$keep_raw_plot_layer = TRUE
+          updateCheckboxInput(session, "plot_raw_data", value = FALSE)
+        }
+
+        if (input$plot_edit == TRUE){
+          updateCheckboxInput(session, "plot_edit", value = FALSE)
+        }
 
         r_locals$measurement <- data_get_measurement(con = db_con(),
                                                      sensor = r_locals$sensor_id,
@@ -410,8 +445,12 @@ mod_edit_server <- function(id, r_globals){
                                    y = "value_corr",
                                    y_title = input$parameter)
 
-        r_locals$valid_plot_layer <- TRUE
-        r_locals$plot_layer <- 1
+        # redraw raw plot if input$plot_raw_data was TRUE
+        if (r_locals$keep_raw_plot_layer == TRUE){
+          updateCheckboxInput(session, "plot_raw_data", value = TRUE)
+          r_locals$keep_raw_plot_layer <- FALSE
+        }
+
       } else {
         r_locals$userinfo$processing <- "Fail insert edits"
       }
