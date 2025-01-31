@@ -27,6 +27,12 @@ mod_edit_ui <- function(id){
                         label = "Plot raw data",
                         value = FALSE)
         ),
+        column(
+          width = 2,
+          checkboxInput(inputId = ns("plot_intervention"),
+                        label = "Plot intervention",
+                        value = FALSE)
+        )
       ),
       fluidRow(
         column(
@@ -46,13 +52,13 @@ mod_edit_ui <- function(id){
           dateRangeInput(inputId = ns("date"),
                          label = "Date",
                          # actual date - 1 month
-                         start =  Sys.Date() - 30,
+                         start =  Sys.Date() - 180,
                          end =  Sys.Date()
                          )
         ),
         column(
           width = 2,
-          tags$div(style = "margin-top: 20px;"),
+          tags$div(style = "margin-top: 30px;"),
           actionButton(inputId = ns("plot_valid_data"),
                        label = "Plot valid data"),
           tags$div(style = "margin-bottom: 20px;")
@@ -161,9 +167,9 @@ mod_edit_server <- function(id, r_globals){
     r_locals <- reactiveValues(
       sensor_id = NULL,
       measurement = NULL,
+      intervention = NULL,
       plot = NULL,
       keep_raw_plot_layer = FALSE,
-      # valid_plot_layer = FALSE,
       plot_layer = NULL,
       corr_plot = FALSE,
       edit_plot = FALSE,
@@ -175,6 +181,7 @@ mod_edit_server <- function(id, r_globals){
 
     ### INIT ####
     shinyjs::disable("plot_raw_data")
+    shinyjs::disable("plot_intervention")
     shinyjs::disable("plot_edit")
 
     ### UI OUTPUT ####
@@ -221,6 +228,7 @@ mod_edit_server <- function(id, r_globals){
 
       shinyjs::enable("plot_raw_data")
       shinyjs::enable("plot_edit")
+      shinyjs::enable("plot_intervention")
 
       # set input$plot_raw_data and input$plot_edit to FALSE before new plot
       if (input$plot_raw_data == TRUE){
@@ -228,7 +236,8 @@ mod_edit_server <- function(id, r_globals){
         updateCheckboxInput(session, "plot_raw_data", value = FALSE)
       }
 
-      if (input$plot_edit == TRUE){
+      # check if input$plot_edit exist then remove the trace if is TRUE
+      if (!is.null(input$plot_edit) && input$plot_edit == TRUE){
         updateCheckboxInput(session, "plot_edit", value = FALSE)
       }
 
@@ -263,6 +272,27 @@ mod_edit_server <- function(id, r_globals){
       } else {
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("deleteTraces", 0)
+      }
+    })
+
+    #### Plot intervention bttn ####
+    observeEvent(input$plot_intervention, {
+
+      if (input$plot_intervention == TRUE){
+
+        r_locals$intervention <- data_get_intervention(con = db_con(),
+                                                      station_id = r_globals$station$id,
+                                                      start_date = input$date[1],
+                                                      end_date = input$date[2])
+
+        plot_intervention <- plot_intervention_lines(as.POSIXct(r_locals$intervention[["timestamp"]]))
+
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("relayout",  plot_intervention)
+
+      } else {
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("relayout",  list(shapes = NULL))
       }
     })
 

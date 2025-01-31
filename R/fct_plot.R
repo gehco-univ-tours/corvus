@@ -50,6 +50,46 @@ plot_add_raw_trace <- function(data, y, y_label){
   return(trace)
 }
 
+#' Create a vertical dashed line annotation for longitudinal profile plots
+#'
+#' This function generates a vertical dashed line annotation for longitudinal profile
+#' plots using the 'plotly' package.
+#'
+#' @param x The x-coordinate where the vertical line should be positioned.
+#' @param color The color of the vertical dashed line (default is "green").
+#'
+#' @return A list object representing a vertical dashed line annotation.
+#'
+#' @export
+plot_vertical_line <- function(x = 0, color = "green") {
+  list(
+    type = "line",
+    y0 = 0,
+    y1 = 1,
+    xref = "x",
+    yref = "paper",
+    x0 = x,
+    x1 = x,
+    line = list(color = color, width = 2, dash="dash")
+  )
+}
+
+#' Create a list of vertical dashed line annotations for longitudinal profile plots
+#'
+#' @param data A data frame containing the x-coordinates of the vertical lines.
+#'
+#' @return A list object containing the vertical dashed line annotations.
+#'
+#' @export
+plot_intervention_lines <- function(data){
+  shapes_list <- list (
+    shapes = lapply(data, function(x) {
+      plot_vertical_line(x = x, color = "green")
+    })
+  )
+  return (shapes_list)
+}
+
 #' plotly add edit trace.
 #'
 #' @param data data frame containing the selected axis data.

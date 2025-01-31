@@ -263,3 +263,11 @@ data_get_stations <- function(con){
   dbDisconnect(con)
   return(data)
 }
+
+data_get_intervention <- function(con, station_id, start_date, end_date){
+  sql <- "SELECT * FROM intervention WHERE station_id = ?station_id AND timestamp >= ?start_date AND timestamp <= ?end_date;"
+  query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)
+  data <- dbGetQuery(con, query)
+  dbDisconnect(con)
+  return(data)
+}
