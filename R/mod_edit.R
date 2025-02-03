@@ -63,12 +63,6 @@ mod_edit_ui <- function(id){
                        label = "Plot valid data"),
           tags$div(style = "margin-bottom: 20px;")
         ),
-      #   column(
-      #     width = 1,
-      #     tags$div(style = "margin-top: 20px;"),
-      #     uiOutput(ns("plot_raw_data_ui")),
-      #     tags$div(style = "margin-bottom: 20px;")
-      #   ),
       ), # fluidRow
       tags$hr(), # add horizontal line
       #### Edition mode UI ####

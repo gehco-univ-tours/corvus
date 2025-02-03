@@ -131,3 +131,26 @@ params_get_interval <- function(con, sensor_id){
   dbDisconnect(con)
   return(intervals)
 }
+
+params_get_db_actions <- function(){
+  actions <- c(
+    "Add station" = "add_station",
+    "Add device model" = "add_device_model",
+    "Add device" = "add_device",
+    "add parameter" = "add_parameter",
+    "Add sensor" = "add_sensor"
+  )
+}
+
+params_get_table_fields <- function(table_name, con){
+  sql <- paste("SELECT column_name FROM information_schema.columns WHERE table_name = ?table_name AND column_name != 'id';")
+  query <- sqlInterpolate(con, sql, table_name = table_name)
+  fields <- dbGetQuery(con, query)$column_name
+  return(fields)
+}
+
+params_get_device_names <- function(con){
+  sql <- "SELECT name FROM device_model;"
+  device_names <- dbGetQuery(con, sql)$name
+  return(device_names)
+}

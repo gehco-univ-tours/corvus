@@ -20,8 +20,8 @@ app_ui <- function(request) {
       tabPanel("Stations", mod_stations_ui("stations_1")),
       tabPanel("Raw Data", mod_raw_ui("raw_1")),
       tabPanel("Edition", mod_edit_ui("edit_1")),
-      tabPanel("Validation", mod_valid_ui("valid_1"))
-
+      tabPanel("Validation", mod_valid_ui("valid_1")),
+      tabPanel("Database", mod_database_ui("database_1"))
     )
   )
 }

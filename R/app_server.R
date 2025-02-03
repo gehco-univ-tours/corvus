@@ -17,5 +17,6 @@ app_server <- function(input, output, session) {
   mod_raw_server("raw_1")
   mod_edit_server("edit_1", r_globals)
   mod_valid_server("valid_1")
+  mod_database_server("database_1")
 
 }

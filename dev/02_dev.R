@@ -24,6 +24,7 @@ golem::add_module(name = "stations", with_test = TRUE) # Name of the module
 golem::add_module(name = "raw", with_test = TRUE) # Name of the module
 golem::add_module(name = "edit", with_test = TRUE) # Name of the module
 golem::add_module(name = "valid", with_test = TRUE) # Name of the module
+golem::add_module(name = "database", with_test = TRUE) # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
