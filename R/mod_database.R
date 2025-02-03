@@ -19,7 +19,9 @@ mod_database_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("action"),
                       label = "Action",
-                      choices = params_get_db_actions())
+                      choices = params_get_db_actions()),
+          actionButton(inputId = ns("submit"),
+                       label = "Submit")
         ),
         column(
           width = 2,
@@ -74,16 +76,16 @@ mod_database_server <- function(id){
           if (input$action == "add_station") {
             fields = params_get_table_fields("station", db_con())
             lapply(fields, function(field) {
-              textInput(field, label = field)
+              textInput(ns(field), label = field)
             })
           } else if (input$action == "add_parameter") {
             fields = params_get_table_fields("parameter", db_con())
             device_names <- params_get_device_names(db_con())
             lapply(fields, function(field) {
               if (field == "device_id") {
-                selectInput(field, label = field, choices = device_names)
+                selectInput(ns(field), label = field, choices = device_names)
               } else {
-                textInput(field, label = field)
+                textInput(ns(field), label = field)
               }
             })
           }

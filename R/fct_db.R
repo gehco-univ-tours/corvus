@@ -14,3 +14,4 @@ db_con <- function(){
                            password  = Sys.getenv("DB_LOUROUX_DEV_PWD"))
   return(db_con)
 }
+
