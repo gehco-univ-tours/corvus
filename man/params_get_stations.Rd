@@ -10,7 +10,7 @@ params_get_stations(con)
 \item{con}{PqConnection: database connection}
 }
 \value{
-list
+vector
 }
 \description{
 This function returns a list of stations from the database.

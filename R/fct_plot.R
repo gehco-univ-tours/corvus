@@ -211,7 +211,7 @@ plot_add_valid_period <- function(data){
 plot_available_raw <- function(station_id, date_start, date_end){
 
   # Get the parameters for the station
-  parameters <- params_get_parameters(con = db_con(), station_id = station_id)
+  parameters <- params_get_station_parameters(con = db_con(), station_id = station_id)
 
   # Initialize an empty list to store the plots
   plot_list <- list()

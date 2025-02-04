@@ -7,7 +7,7 @@
 #' @importFrom DBI dbGetQuery
 #' @importFrom stats setNames
 #'
-#' @return list
+#' @return vector
 #' @export
 params_get_authors <- function(con){
   authors <- dbGetQuery(con, "SELECT id, name FROM author")
@@ -25,7 +25,7 @@ params_get_authors <- function(con){
 #' @importFrom stats setNames
 #' @importFrom DBI dbGetQuery
 #'
-#' @return list
+#' @return vector
 #' @export
 params_get_stations <- function(con){
   stations <- dbGetQuery(con, "SELECT id, name FROM station")
@@ -43,9 +43,9 @@ params_get_stations <- function(con){
 #'
 #' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
 #'
-#' @return list
+#' @return vector
 #' @export
-params_get_parameters <- function(con, station_id){
+params_get_station_parameters <- function(con, station_id){
   sql <- "SELECT parameter.id, parameter.name
     FROM parameter
     JOIN sensor ON sensor.parameter_id = parameter.id
@@ -68,7 +68,7 @@ params_get_parameters <- function(con, station_id){
 #' @importFrom stats setNames
 #' @importFrom DBI dbGetQuery
 #'
-#' @return list
+#' @return vector
 #' @export
 params_get_sensor_id <- function(con, station_id, parameter_id){
   sql <- "SELECT sensor.id
@@ -89,7 +89,7 @@ params_get_sensor_id <- function(con, station_id, parameter_id){
 #' @importFrom stats setNames
 #' @importFrom DBI dbGetQuery
 #'
-#' @return list
+#' @return data.frame
 #' @export
 params_get_correction_type <- function(con){
   corrections <- dbGetQuery(con, "SELECT id, name FROM correction_type")
@@ -106,7 +106,7 @@ params_get_correction_type <- function(con){
 #' @importFrom stats setNames
 #' @importFrom DBI dbGetQuery
 #'
-#' @return list
+#' @return data.frame
 #' @export
 params_get_interval <- function(con, sensor_id){
   sql <- "WITH intervals AS (
@@ -132,25 +132,86 @@ params_get_interval <- function(con, sensor_id){
   return(intervals)
 }
 
+#' Get actions list to update database
+#'
+#' @return vector
+#' @export
 params_get_db_actions <- function(){
   actions <- c(
-    "Add station" = "add_station",
-    "Add device model" = "add_device_model",
-    "Add device" = "add_device",
-    "add parameter" = "add_parameter",
-    "Add sensor" = "add_sensor"
+    "Add station" = "station",
+    "Add device model" = "device_model",
+    "Add device" = "device",
+    "add parameter" = "parameter",
+    "Add sensor" = "sensor",
+    "Add author" = "author"
   )
 }
 
+#' Get table fields
+#'
+#' @param table_name character: table name
+#' @param con PqConnection: database connection
+#'
+#' @importFrom DBI dbGetQuery sqlInterpolate dbDisconnect
+#' @importFrom glue glue
+#'
+#' @return data.frame
+#' @export
 params_get_table_fields <- function(table_name, con){
   sql <- paste("SELECT column_name FROM information_schema.columns WHERE table_name = ?table_name AND column_name != 'id';")
   query <- sqlInterpolate(con, sql, table_name = table_name)
   fields <- dbGetQuery(con, query)$column_name
+  dbDisconnect(con)
   return(fields)
 }
 
-params_get_device_names <- function(con){
-  sql <- "SELECT name FROM device_model;"
-  device_names <- dbGetQuery(con, sql)$name
-  return(device_names)
+#' Get devices list
+#'
+#' @param con PqConnection: database connection
+#'
+#' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery dbDisconnect
+#'
+#' @return vector
+#' @export
+params_get_devices <- function(con){
+  devices <- dbGetQuery(con, "SELECT id, serial_num FROM device")
+  devices <- setNames(devices$id, devices$serial_num)
+  dbDisconnect(con)
+  return(devices)
+}
+
+#' Get device models list
+#'
+#' @param con PqConnection: database connection
+#'
+#' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery dbDisconnect
+#'
+#' @return vector
+#' @export
+params_get_device_models <- function(con){
+  sql <- "SELECT id, name FROM device_model;"
+  device_models <- dbGetQuery(con, sql)
+  device_models <- setNames(device_models$id, device_models$name)
+  dbDisconnect(con)
+  return(device_models)
+}
+
+#' Get parameters list
+#' @param con PqConnection: database connection
+#'
+#' @importFrom stats setNames
+#' @importFrom DBI dbGetQuery dbDisconnect
+#'
+#' @return vector
+#' @export
+params_get_parameters <- function(con){
+  sql <- "SELECT parameter.id, CONCAT(parameter.name, ' ', device.serial_num) AS name
+          FROM parameter
+          LEFT JOIN device ON parameter.device_id = device.id;"
+  parameters <- dbGetQuery(con, sql)
+  parameters <- setNames(parameters$id, parameters$name)
+  dbDisconnect(con)
+  return(parameters)
 }

@@ -7,29 +7,29 @@ CREATE TABLE author (
 
 CREATE TABLE station (
     id SERIAL PRIMARY KEY,
-    code VARCHAR(255),
-    name VARCHAR(255),
-    latitude DOUBLE PRECISION,
-    longitude DOUBLE PRECISION
+    code VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    latitude DOUBLE PRECISION  NOT NULL,
+    longitude DOUBLE PRECISION  NOT NULL
 );
 
 CREATE TABLE device_model (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
-    brand VARCHAR(255),
-    type VARCHAR(255)
+    name VARCHAR(255) NOT NULL UNIQUE,
+    brand VARCHAR(255) NOT NULL,
+    type VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE device (
     id SERIAL PRIMARY KEY,
-    serial_num VARCHAR(255),
+    serial_num VARCHAR(255) NOT NULL UNIQUE,
     device_model_id INTEGER NOT NULL REFERENCES device_model(id)
 );
 
 CREATE TABLE parameter (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
-    unit VARCHAR(255),
+    name VARCHAR(255) NOT NULL,
+    unit VARCHAR(255) NOT NULL,
     accuracy DOUBLE PRECISION,
     accuracy_unit VARCHAR(255),
     device_id INTEGER NOT NULL REFERENCES device(id)
@@ -39,7 +39,7 @@ CREATE TABLE sensor (
     id SERIAL PRIMARY KEY,
     station_id INTEGER NOT NULL REFERENCES station(id),
     parameter_id INTEGER NOT NULL REFERENCES parameter(id),
-    name VARCHAR(255),
+    name VARCHAR(255) NOT NULL,
     CONSTRAINT sensor_uniq UNIQUE (station_id, parameter_id)
 );
 

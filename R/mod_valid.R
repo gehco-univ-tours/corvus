@@ -128,7 +128,7 @@ mod_valid_server <- function(id){
     observeEvent(input$station, {
       r_locals$userinfo$station <- glue::glue("Station ID: {input$station}")
       updateSelectInput(session, "parameter",
-                        choices = params_get_parameters(db_con(), input$station))
+                        choices = params_get_station_parameters(db_con(), input$station))
     })
 
     #### Parameter ####

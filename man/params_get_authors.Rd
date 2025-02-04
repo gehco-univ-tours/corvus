@@ -10,7 +10,7 @@ params_get_authors(con)
 \item{con}{PqConnection: database connection}
 }
 \value{
-list
+vector
 }
 \description{
 This function returns a list of authors from the database.

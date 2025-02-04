@@ -14,7 +14,7 @@ params_get_sensor_id(con, station_id, parameter_id)
 \item{parameter_id}{integer: parameter id}
 }
 \value{
-list
+vector
 }
 \description{
 This function returns the sensor id based on the station and parameter id.

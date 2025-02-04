@@ -24,6 +24,7 @@ Imports:
     shinyjs,
     shinyWidgets,
     stats,
+    stringr,
     tidyselect,
     utils
 Suggests: 

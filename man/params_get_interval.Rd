@@ -12,7 +12,7 @@ params_get_interval(con, sensor_id)
 \item{sensor_id}{integer: sensor id}
 }
 \value{
-list
+data.frame
 }
 \description{
 Get main interval sensor measurement.

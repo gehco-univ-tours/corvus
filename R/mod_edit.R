@@ -207,7 +207,7 @@ mod_edit_server <- function(id, r_globals){
       }
         r_locals$userinfo$station <- glue::glue("Station ID: {r_globals$station$id}")
         updateSelectInput(session, "parameter",
-                          choices = params_get_parameters(db_con(), r_globals$station$id))
+                          choices = params_get_station_parameters(db_con(), r_globals$station$id))
     })
 
     #### Parameter ####

@@ -264,6 +264,17 @@ data_get_stations <- function(con){
   return(data)
 }
 
+#' Get all the intervention from the database
+#'
+#' @param con PqConnection: database connection
+#' @param station_id integer: station id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#'
+#' @return data.frame
+#' @export
 data_get_intervention <- function(con, station_id, start_date, end_date){
   sql <- "SELECT * FROM intervention WHERE station_id = ?station_id AND timestamp >= ?start_date AND timestamp <= ?end_date;"
   query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)

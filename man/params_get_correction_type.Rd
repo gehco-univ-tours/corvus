@@ -10,7 +10,7 @@ params_get_correction_type(con)
 \item{con}{PqConnection: database connection}
 }
 \value{
-list
+data.frame
 }
 \description{
 This function returns a list of the type of correction available from the database.
