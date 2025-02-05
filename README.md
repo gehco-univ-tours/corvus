@@ -68,8 +68,6 @@ louroux::run_app()
 
 ## Insert data
 
-The database follows the current structure : ![]()
-
 ## How to cite
 
 Manière, L. (2024). louroux (Version 0.0.0.9000) \[Computer software\].

@@ -69,8 +69,6 @@ louroux::run_app()
 
 ## Insert data
 
-The database follows the current structure : 
-![]()
 
 ## How to cite
 
