@@ -41,9 +41,9 @@ db_insert_data <- function(db_conn, table_name, input_values) {
     # Execute the query
     dbExecute(db_conn, query)
 
-    return(list(success = TRUE, message = glue::glue("✅ Data  {table_name} inserted successfully!")))
+    return(list(success = TRUE, message = glue::glue("Data {table_name} inserted successfully!")))
   }, error = function(e) {
-    return(list(success = FALSE, message = paste("❌ Database error:", e$message)))
+    return(list(success = FALSE, message = paste("Database error:", e$message)))
   })
   return(message)
 }

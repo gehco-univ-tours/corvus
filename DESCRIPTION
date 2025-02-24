@@ -3,7 +3,7 @@ Title: corvus
 Version: 0.0.0.9000
 Authors@R: 
     person("Louis", "Manière", , "louis.maniere@univ-tours.fr", role = c("cre", "aut"))
-Description: Measurement stations managing R shiny application
+Description: Measurement stations managing R shiny application.
 License: GPL (>= 3)
 Imports: 
     bslib,

@@ -6,7 +6,9 @@
 \alias{corvus-package}
 \title{corvus: corvus}
 \description{
-Measurement stations managing R shiny application
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+
+Measurement stations managing R shiny application.
 }
 \author{
 \strong{Maintainer}: Louis Manière \email{louis.maniere@univ-tours.fr}
