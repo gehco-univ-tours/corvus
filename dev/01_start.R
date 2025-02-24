@@ -19,9 +19,9 @@
 ## to change the name in the app_sys() function in app_config.R /!\
 ##
 golem::fill_desc(
-  pkg_name = "louroux", # The Name of the package containing the App
-  pkg_title = "Louroux", # The Title of the package containing the App
-  pkg_description = "Louroux data processing.", # The Description of the package containing the App
+  pkg_name = "corvus", # The Name of the package containing the App
+  pkg_title = "corvus", # The Title of the package containing the App
+  pkg_description = "Measurement stations managing R shiny application.", # The Description of the package containing the App
   author_first_name = "Louis", # Your First Name
   author_last_name = "Manière", # Your Last Name
   author_email = "louis.maniere@univ-tours.fr", # Your Email
@@ -56,7 +56,7 @@ golem::use_recommended_tests()
 
 ## Favicon ----
 # If you want to change the favicon (default is golem's one)
-golem::use_favicon(path = "inst/app/www/logo_gehco.png") # path = "path/to/ico". Can be an online file.
+golem::use_favicon(path = "inst/app/www/corvus.ico") # path = "path/to/ico". Can be an online file.
 # golem::remove_favicon() # Uncomment to remove the default favicon
 
 ## Add helper functions ----

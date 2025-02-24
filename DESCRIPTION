@@ -1,9 +1,9 @@
-Package: louroux
-Title: Louroux
+Package: corvus
+Title: corvus
 Version: 0.0.0.9000
 Authors@R: 
     person("Louis", "Manière", , "louis.maniere@univ-tours.fr", role = c("cre", "aut"))
-Description: Louroux data processing.
+Description: Measurement stations managing R shiny application
 License: GPL (>= 3)
 Imports: 
     bslib,

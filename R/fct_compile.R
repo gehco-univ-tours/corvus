@@ -25,7 +25,7 @@ compile_raw <- function(con, station, parameter, sensor){
   parameter_name <- dbGetQuery(con, query)$name
 
   # create directory path
-  dir <- system.file("ext_data", station_name, "raw_data", parameter_name, package = "louroux")
+  dir <- system.file("ext_data", station_name, "raw_data", parameter_name, package = "corvus")
   # list all files
   files <- list.files(path = dir,
                                pattern = "*\\.csv$",
@@ -111,7 +111,7 @@ download_gb <- function(){
   ### LOCAL DIR ##
 
   # list all the ISTO csv files in local directory
-  local_data_dir <- system.file("ext_data", "GB", package = "louroux")
+  local_data_dir <- system.file("ext_data", "GB", package = "corvus")
   local_data_files <- list.files(path = local_data_dir, pattern = "*.CSV",
                                  full.names = FALSE)
   ### DOWNLOAD ##
@@ -155,7 +155,7 @@ compile_gb <- function(con){
   station <- "GB"
 
   # create directory path
-  dir <- system.file("ext_data", station, package = "louroux")
+  dir <- system.file("ext_data", station, package = "corvus")
   # list all files
   files <- list.files(path = dir,
                       pattern = "*\\.CSV$",

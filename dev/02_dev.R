@@ -52,7 +52,7 @@ usethis::use_test("app")
 # Documentation
 
 ## Vignette ----
-usethis::use_vignette("louroux")
+usethis::use_vignette("corvus")
 devtools::build_vignettes()
 
 ## Code Coverage----

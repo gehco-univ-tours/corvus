@@ -1,20 +1,24 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# louroux
+# corvus <a href=""><img src="man/figures/logo.png" align="right" height="70" /></a>
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-louroux is a data processing application for the Louroux observatory
-site (University of Tours and Zone Atelier Loire site).
+corvus is a measurement stations managing application. The app is built
+with the {shiny} package and uses a PostgreSQL database with the
+TimescaleDB extension. The app is designed to manage measurement
+stations and their time series data. The app allows to insert, update
+and delete data. The app also allows to visualize the data with
+different plots, make correction and validation.
 
 ## Installation
 
 ### Install package from GitHub
 
 ``` r
-remotes::install_github("https://github.com/LouisManiere/louroux.git")
+remotes::install_github("https://github.com/gehco-univ-tours/corvus.git")
 ```
 
 ### Install PostgreSQL timescaleDB database
@@ -55,23 +59,23 @@ timescaledb:
   folder or in the package with the following command:
 
 ``` r
-library(louroux)
-system.file("sql", "db_model_pg_timescale.sql", package = "louroux") # file to create an empty database
-system.file("sql", "db_data_example.sql", package = "louroux") # file to add example data
+library(corvus)
+system.file("sql", "db_model_pg_timescale.sql", package = "corvus") # file to create an empty database
+system.file("sql", "db_data_example.sql", package = "corvus") # file to add example data
 ```
 
 ## Run app
 
 ``` r
-louroux::run_app()
+corvus::run_app()
 ```
 
 ## Insert data
 
 ## How to cite
 
-Manière, L. (2024). louroux (Version 0.0.0.9000) \[Computer software\].
-<https://github.com/LouisManiere/louroux>
+Manière, L. (2024). corvus (Version 0.0.0.9000) \[Computer software\].
+<https://github.com/gehco-univ-tours/corvus>
 
 ## Licence
 

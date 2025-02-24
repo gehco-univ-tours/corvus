@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(louroux)
+library(corvus)
 
-test_check("louroux")
+test_check("corvus")

@@ -13,8 +13,8 @@ app_ui <- function(request) {
       theme = bs_theme(version = 5, bootswatch = "simplex"),
       title =
         div(
-          img(src = "www/logo_gehco.png", height = 30, width = 35, style = "margin-right: 10px;"),
-          "Louroux",
+          img(src = "www/logo.png", height = 30, width = 70, style = "margin-right: 10px;"),
+          "Corvus",
           style = "display: flex; float: left;"
         ),
       tabPanel("Stations", mod_stations_ui("stations_1")),
@@ -41,10 +41,10 @@ golem_add_external_resources <- function() {
   )
 
   tags$head(
-    favicon(ext = "png"),
+    favicon(ext = "ico"),
     bundle_resources(
       path = app_sys("app/www"),
-      app_title = "louroux"
+      app_title = "corvus"
     )
     # Add here other external resources
     # for example, you can add shinyalert::useShinyalert()

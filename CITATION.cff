@@ -2,14 +2,14 @@
 # CITATION file created with {cffr} R package
 # See also: https://docs.ropensci.org/cffr/
 # --------------------------------------------
- 
+
 cff-version: 1.2.0
-message: 'To cite package "louroux" in publications use:'
+message: 'To cite package "corvus" in publications use:'
 type: software
 license: GPL-3.0-or-later
-title: 'louroux: Louroux'
+title: 'corvus: corvus'
 version: 0.0.0.9000
-abstract: Louroux data processing.
+abstract: Measurement stations managing R shiny application.
 authors:
 - family-names: Manière
   given-names: Louis
