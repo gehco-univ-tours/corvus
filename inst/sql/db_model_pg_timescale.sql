@@ -13,6 +13,7 @@ CREATE TABLE station (
     longitude DOUBLE PRECISION  NOT NULL
 );
 
+/*
 CREATE TABLE device_model (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
@@ -26,13 +27,27 @@ CREATE TABLE device (
     device_model_id INTEGER NOT NULL REFERENCES device_model(id)
 );
 
-CREATE TABLE parameter (
+CREATE TABLE installation (
+    id SERIAL PRIMARY KEY,
+    station_id INTEGER NOT NULL REFERENCES station(id),
+    device_id INTEGER NOT NULL REFERENCES device(id),
+    timestamp_start TIMESTAMPTZ NOT NULL,
+    timestamp_end TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE sensor_parameter (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     unit VARCHAR(255) NOT NULL,
     accuracy DOUBLE PRECISION,
     accuracy_unit VARCHAR(255),
-    device_id INTEGER NOT NULL REFERENCES device(id)
+    device_model_id INTEGER NOT NULL REFERENCES device_model(id)
+);
+*/
+
+CREATE TABLE parameter (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE sensor (
