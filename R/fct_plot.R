@@ -38,7 +38,7 @@ plot_main <- function(data, y, y_title){
 #'
 #' @return list
 #' @export
-plot_add_raw_trace <- function(data, y, y_label){
+plot_add_corr_trace <- function(data, y, y_label){
   trace <- list(
     x = data[["timestamp"]],
     y = data[[y]],

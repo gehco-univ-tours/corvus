@@ -1,4 +1,4 @@
-ALTER DATABASE my_database SET TIME ZONE 'UTC';
+ALTER DATABASE corvus SET TIME ZONE 'UTC';
 
 CREATE TABLE author (
     id SERIAL PRIMARY KEY,
@@ -47,7 +47,8 @@ CREATE TABLE sensor_parameter (
 
 CREATE TABLE parameter (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE sensor (
@@ -71,7 +72,7 @@ CREATE TABLE measurement (
     CONSTRAINT measurement_pkey UNIQUE (timestamp, sensor_id)
 );
 
-SELECT create_hypertable('measurement', 'timestamp');
+SELECT create_hypertable('measurement', by_range('timestamp'));
 
 CREATE UNIQUE INDEX idx_measurement_timestamp_sensor_id ON measurement(timestamp, sensor_id);
 
