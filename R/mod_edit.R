@@ -39,7 +39,7 @@ mod_edit_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = params_get_stations(db_con()))
+                      choices = db_get_stations(db_con()))
         ),
         column(
           width = 2,
@@ -207,13 +207,13 @@ mod_edit_server <- function(id, r_globals){
       }
         r_locals$userinfo$station <- glue::glue("Station ID: {r_globals$station$id}")
         updateSelectInput(session, "parameter",
-                          choices = params_get_station_parameters(db_con(), r_globals$station$id))
+                          choices = db_get_station_parameters(db_con(), r_globals$station$id))
     })
 
     #### Parameter ####
     observeEvent(input$parameter, {
       req(input$parameter) # avoid error at init
-      r_locals$sensor_id <- params_get_sensor_id(db_con(), input$station, input$parameter)
+      r_locals$sensor_id <- db_get_sensor_id(db_con(), input$station, input$parameter)
       r_locals$userinfo$parameter_id <- glue::glue("Parameter id: {input$parameter}")
       r_locals$userinfo$sensor_id <- glue::glue("Sensor id: {r_locals$sensor_id}")
     })
@@ -297,12 +297,12 @@ mod_edit_server <- function(id, r_globals){
         output$author_ui <- renderUI({
           selectInput(inputId = ns("author"),
                       label = "Author",
-                      choices = params_get_authors(db_con()))
+                      choices = db_get_authors(db_con()))
         })
         output$correction_ui <- renderUI({
           selectInput(inputId = ns("correction"),
                       label = "Correction",
-                      choices = params_get_correction_type(db_con()))
+                      choices = db_get_correction_type(db_con()))
         })
         output$date_edit_ui <- renderUI({
           dateRangeInput(inputId = ns("date_edit"),

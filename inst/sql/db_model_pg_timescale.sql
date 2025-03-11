@@ -47,8 +47,8 @@ CREATE TABLE sensor_parameter (
 
 CREATE TABLE parameter (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    code VARCHAR(255) NOT NULL
+    name VARCHAR(255) NOT NULL UNIQUE,
+    code VARCHAR(255) NOT NULL UNIQUE
 );
 
 CREATE TABLE sensor (

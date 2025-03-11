@@ -19,7 +19,7 @@ mod_database_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("action"),
                       label = "Action",
-                      choices = params_get_db_actions()),
+                      choices = db_get_db_actions()),
           actionButton(inputId = ns("submit"),
                        label = "Submit")
         ),
@@ -89,7 +89,7 @@ mod_database_server <- function(id){
     observeEvent(input$action, {
       req(input$action)
       r_locals$table_name <- input$action
-      r_locals$fields = params_get_table_fields(r_locals$table_name, db_con())
+      r_locals$fields = db_get_table_fields(r_locals$table_name, db_con())
       # Station
       output$field <- renderUI({
         if (input$action == "station") {
@@ -99,13 +99,8 @@ mod_database_server <- function(id){
         }
         # parameter
         else if (input$action == "parameter") {
-          devices <- params_get_devices(db_con())
           lapply(r_locals$fields, function(field) {
-            if (field == "device_id") {
-              selectInput(ns(field), label = field, choices = devices)
-            } else {
-              textInput(ns(field), label = field)
-            }
+            textInput(ns(field), label = field)
           })
         }
         # author
@@ -116,8 +111,8 @@ mod_database_server <- function(id){
         }
         # sensor
         else if (input$action == "sensor"){
-          stations <- params_get_stations(db_con())
-          parameters <- params_get_parameters(db_con())
+          stations <- db_get_stations(db_con())
+          parameters <- db_get_parameters(db_con())
           lapply(r_locals$fields, function(field) {
             if (field == "station_id") {
               selectInput(ns(field), label = field, choices = stations)
@@ -130,7 +125,7 @@ mod_database_server <- function(id){
         }
         # device
         else if (input$action == "device"){
-          device_models <- params_get_device_models(db_con())
+          device_models <- db_get_device_models(db_con())
           lapply(r_locals$fields, function(field) {
             if (field == "device_model_id") {
               selectInput(ns(field), label = field, choices = device_models)

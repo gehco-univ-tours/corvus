@@ -211,14 +211,14 @@ plot_add_valid_period <- function(data){
 plot_available_raw <- function(station_id, date_start, date_end){
 
   # Get the parameters for the station
-  parameters <- params_get_station_parameters(con = db_con(), station_id = station_id)
+  parameters <- db_get_station_parameters(con = db_con(), station_id = station_id)
 
   # Initialize an empty list to store the plots
   plot_list <- list()
 
   for (i in 1:length(parameters)) {
-    sensor_id <- params_get_sensor_id(con = db_con(), station_id = station_id, parameter_id = parameters[[i]])
-    interval_time <- params_get_interval(con = db_con(), sensor_id = sensor_id)
+    sensor_id <- db_get_sensor_id(con = db_con(), station_id = station_id, parameter_id = parameters[[i]])
+    interval_time <- db_get_interval(con = db_con(), sensor_id = sensor_id)
 
     # get available data
     data <- data_get_available_period(con = db_con(), sensor_id = sensor_id, start_date = date_start, end_date = date_end, interval_time = interval_time)
