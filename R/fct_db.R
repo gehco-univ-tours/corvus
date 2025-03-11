@@ -182,19 +182,6 @@ db_get_interval <- function(con, sensor_id){
   return(intervals)
 }
 
-#' Get actions list to update database
-#'
-#' @return vector
-#' @export
-db_get_db_actions <- function(){
-  actions <- c(
-    "Add station" = "station",
-    "add parameter" = "parameter",
-    "Add sensor" = "sensor",
-    "Add author" = "author"
-  )
-}
-
 #' Get table fields
 #'
 #' @param table_name character: table name
@@ -211,39 +198,6 @@ db_get_table_fields <- function(table_name, con){
   fields <- dbGetQuery(con, query)$column_name
   dbDisconnect(con)
   return(fields)
-}
-
-#' Get devices list
-#'
-#' @param con PqConnection: database connection
-#'
-#' @importFrom stats setNames
-#' @importFrom DBI dbGetQuery dbDisconnect
-#'
-#' @return vector
-#' @export
-db_get_devices <- function(con){
-  devices <- dbGetQuery(con, "SELECT id, serial_num FROM device")
-  devices <- setNames(devices$id, devices$serial_num)
-  dbDisconnect(con)
-  return(devices)
-}
-
-#' Get device models list
-#'
-#' @param con PqConnection: database connection
-#'
-#' @importFrom stats setNames
-#' @importFrom DBI dbGetQuery dbDisconnect
-#'
-#' @return vector
-#' @export
-db_get_device_models <- function(con){
-  sql <- "SELECT id, name FROM device_model;"
-  device_models <- dbGetQuery(con, sql)
-  device_models <- setNames(device_models$id, device_models$name)
-  dbDisconnect(con)
-  return(device_models)
 }
 
 #' Get parameters list

@@ -19,7 +19,7 @@ mod_database_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("action"),
                       label = "Action",
-                      choices = db_get_db_actions()),
+                      choices = params_get_db_actions()),
           actionButton(inputId = ns("submit"),
                        label = "Submit")
         ),
@@ -121,23 +121,6 @@ mod_database_server <- function(id){
             } else {
               textInput(ns(field), label = field)
             }
-          })
-        }
-        # device
-        else if (input$action == "device"){
-          device_models <- db_get_device_models(db_con())
-          lapply(r_locals$fields, function(field) {
-            if (field == "device_model_id") {
-              selectInput(ns(field), label = field, choices = device_models)
-            } else {
-              textInput(ns(field), label = field)
-            }
-          })
-        }
-        # device model
-        else if (input$action == "device_model"){
-          lapply(r_locals$fields, function(field) {
-            textInput(ns(field), label = field)
           })
         }
       })
