@@ -2,26 +2,26 @@
 #'
 #' @param con PqConnection: database connection
 #' @param sensor integer: sensor id
-#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
-#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
-#'
-#' @return data.frame
-#' @export
-#'
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
-#'
-#' @examples
-#' con <- db_con()
-#' data_get_measurement(con, 2, "2019-01-05", "2021-12-26")
-data_get_measurement <- function(con, sensor, start_date, end_date){
-  sql <- "SELECT timestamp, value, value_corr FROM measurement WHERE timestamp >= ?start_date AND timestamp <= ?end_date
-    AND sensor_id = ?sensor ORDER BY timestamp;"
-  query <- sqlInterpolate(con, sql, start_date = start_date, end_date = end_date,
-                          sensor = sensor)
-  data <- dbGetQuery(con, query)
-  dbDisconnect(con)
-  return(data)
-}
+#' #' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' #' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#' #'
+#' #' @return data.frame
+#' #' @export
+#' #'
+#' #' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#' #'
+#' #' @examples
+#' #' con <- db_con()
+#' #' data_get_measurement(con, 2, "2019-01-05", "2021-12-26")
+#' data_get_measurement <- function(con, sensor, start_date, end_date){
+#'   sql <- "SELECT timestamp, value, value_corr FROM measurement WHERE timestamp >= ?start_date AND timestamp <= ?end_date
+#'     AND sensor_id = ?sensor ORDER BY timestamp;"
+#'   query <- sqlInterpolate(con, sql, start_date = start_date, end_date = end_date,
+#'                           sensor = sensor)
+#'   data <- dbGetQuery(con, query)
+#'   dbDisconnect(con)
+#'   return(data)
+#' }
 
 #' Create drift correction column to edit data frame.
 #'

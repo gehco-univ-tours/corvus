@@ -3,12 +3,14 @@
 #' @param data dataframe sensors dataset.
 #' @param y text parameter selected.
 #' @param y_title text parameter selected name.
+#' @param date_min minimum date xaxis
+#' @param date_max maximum date xaxis
 #'
 #' @importFrom plotly plot_ly layout add_trace
 #'
 #' @return plotly graph.
 #' @export
-plot_main <- function(data, y, y_title){
+plot_main <- function(data, y, y_title, date_min, date_max){
   plot <- plot_ly() %>%
     add_trace(x = data[["timestamp"]],
               y = data[[y]],
@@ -19,8 +21,9 @@ plot_main <- function(data, y, y_title){
   ) %>%
     layout(
       xaxis = list(
-        title = "Date time",
-        rangeslider = list(type = "date")
+        title = "Date time (UTC)",
+        range = c(date_min, date_max)
+        # rangeslider = list(type = "date")
       ),
       yaxis = list(
         title = y_title
@@ -28,6 +31,41 @@ plot_main <- function(data, y, y_title){
       hovermode = "x unified"
     )
   return(plot)
+}
+
+#' Update plotly graph.
+#'
+#' @param data dataframe sensors dataset.
+#' @param y text parameter selected.
+#' @param y_title text parameter selected name.
+#' @param date_min minimum date xaxis
+#' @param date_max maximum date xaxis
+#'
+#' @return list with proxy trace and layout.
+#' @export
+plot_update_main <- function(data, y, y_title, date_min, date_max){
+
+  proxy_trace <- list(
+    x = data[["timestamp"]],
+    y = data[[y]],
+    type = 'scatter',
+    mode = 'lines',
+    name = "raw",
+    line = list(color = 'black')
+  )
+
+  proxy_layout <- list(
+    xaxis = list(
+      range = c(date_min, date_max)
+      # rangeslider = list(type = "date")
+    ),
+    yaxis = list(
+      title = y_title
+    )
+  )
+  proxy <- list("trace" = proxy_trace,
+                "layout" = proxy_layout)
+  return(proxy)
 }
 
 #' plotly add raw data trace.
@@ -81,7 +119,7 @@ plot_vertical_line <- function(x = 0, color = "green") {
 #' @return A list object containing the vertical dashed line annotations.
 #'
 #' @export
-plot_intervention_lines <- function(data){
+plot_field_lines <- function(data){
   shapes_list <- list (
     shapes = lapply(data, function(x) {
       plot_vertical_line(x = x, color = "green")
@@ -163,8 +201,7 @@ plot_add_valid_period <- function(data){
     ) %>%
     layout(
       xaxis = list(
-        title = "Date time",
-        rangeslider = list(type = "date")
+        title = "Date time"
       ),
       yaxis = list(
         title = "Value"

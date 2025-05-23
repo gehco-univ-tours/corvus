@@ -18,7 +18,8 @@ mod_edit_ui <- function(id){
       useShinyjs(),  # Initialize shinyjs
       fluidRow(
         add_busy_bar(color = "#FF0000"),
-        plotlyOutput(ns("plot"))
+        plotlyOutput(ns("plot")),
+        uiOutput(ns("date_ui"))
       ),
       fluidRow(
         column(
@@ -29,8 +30,8 @@ mod_edit_ui <- function(id){
         ),
         column(
           width = 2,
-          checkboxInput(inputId = ns("plot_intervention"),
-                        label = "Plot intervention",
+          checkboxInput(inputId = ns("plot_field"),
+                        label = "Plot plot_field",
                         value = FALSE)
         )
       ),
@@ -47,15 +48,15 @@ mod_edit_ui <- function(id){
                       label = "Parameter",
                       choices = NULL)
         ),
-        column(
-          width = 2,
-          dateRangeInput(inputId = ns("date"),
-                         label = "Date",
-                         # actual date - 1 month
-                         start =  Sys.Date() - 180,
-                         end =  Sys.Date()
-                         )
-        ),
+        # column(
+        #   width = 2,
+        #   dateRangeInput(inputId = ns("date"),
+        #                  label = "Date",
+        #                  # actual date - 1 month
+        #                  start =  Sys.Date() - 180,
+        #                  end =  Sys.Date()
+        #                  )
+        # ),
         column(
           width = 2,
           tags$div(style = "margin-top: 30px;"),
@@ -159,9 +160,20 @@ mod_edit_server <- function(id, r_globals){
     ### REACTIVES ####
 
     r_locals <- reactiveValues(
+      start_date_slider = TRUE,
+      start_plot = TRUE,
       sensor_id = NULL,
+      station_parameters = NULL,
+      parameter = NULL,
+      parameter_name = NULL,
       measurement = NULL,
-      intervention = NULL,
+      measurement_filter = NULL,
+      min_max_date = NULL,
+      date_min = NULL,
+      date_max = NULL,
+      plot_update = 0,
+      date_slider_update = 0,
+      plot_field = NULL,
       plot = NULL,
       keep_corr_plot_layer = FALSE,
       plot_layer = NULL,
@@ -175,7 +187,7 @@ mod_edit_server <- function(id, r_globals){
 
     ### INIT ####
     shinyjs::disable("plot_corr_data")
-    shinyjs::disable("plot_intervention")
+    shinyjs::disable("plot_field")
     shinyjs::disable("plot_edit")
 
     ### UI OUTPUT ####
@@ -193,7 +205,7 @@ mod_edit_server <- function(id, r_globals){
 
     ### EVENT ####
 
-    ### UI ####
+    #### UI ####
     # update input$station if r_globals$station is not NULL
     observeEvent(r_globals$station, {
       updateSelectInput(session, "station", selected = r_globals$station)
@@ -201,29 +213,46 @@ mod_edit_server <- function(id, r_globals){
 
     #### Station ####
     observeEvent(input$station, {
+      req(input$station)
+
+      # update r_globals$station
       if (is.null(r_globals$station) || input$station != r_globals$station$id) {
-        # update r_globals$station
         r_globals$station <- r_globals$all_stations[r_globals$all_stations$id == input$station,]
       }
-        r_locals$userinfo$station <- glue::glue("Station ID: {r_globals$station$id}")
-        updateSelectInput(session, "parameter",
-                          choices = db_get_station_parameters(db_con(), r_globals$station$id))
+
+      # get all parameters for the station and update parameter UI
+      r_locals$station_parameters <- db_get_station_parameters(db_con(), r_globals$station$id)
+      updateSelectInput(session, "parameter",
+                        choices = r_locals$station_parameters)
+      r_locals$parameter <- r_locals$station_parameters[1]
+      r_locals$parameter_name <- names(which(r_locals$station_parameters == r_locals$parameter))
+
+      # force sensor_id event if same input$parameter as previous station
+      if (r_locals$parameter == input$parameter){
+        r_locals$parameter_update = r_locals$parameter_update + 1
+      }
+
+      # User info
+      r_locals$userinfo$station <- glue::glue("Station ID: {r_globals$station$id}")
     })
 
     #### Parameter ####
-    observeEvent(input$parameter, {
-      req(input$parameter) # avoid error at init
+    observeEvent(list(input$parameter, r_locals$parameter_update), {
+      req(input$parameter)
       r_locals$sensor_id <- db_get_sensor_id(db_con(), input$station, input$parameter)
+
+      # user info
       r_locals$userinfo$parameter_id <- glue::glue("Parameter id: {input$parameter}")
       r_locals$userinfo$sensor_id <- glue::glue("Sensor id: {r_locals$sensor_id}")
     })
 
     #### Plot bttn ####
     observeEvent(input$plot_raw_data, {
+      print("input$plot_raw_data")
 
       shinyjs::enable("plot_corr_data")
       shinyjs::enable("plot_edit")
-      shinyjs::enable("plot_intervention")
+      shinyjs::enable("plot_field")
 
       # set input$plot_corr_data and input$plot_edit to FALSE before new plot
       if (input$plot_corr_data == TRUE){
@@ -236,22 +265,83 @@ mod_edit_server <- function(id, r_globals){
         updateCheckboxInput(session, "plot_edit", value = FALSE)
       }
 
-      r_locals$measurement <- data_get_measurement(con = db_con(),
-                                                   sensor = r_locals$sensor_id,
-                                                   start_date = input$date[1],
-                                                   end_date = input$date[2])
+      min_max_date <- db_min_max_date(db_con(), r_locals$sensor_id)
 
-      r_locals$plot <- plot_main(data = r_locals$measurement,
-                                 y = "value",
-                                 y_title = input$parameter)
+      output$date_ui <- renderUI({
+        sliderInput(ns("date"),
+                    "",
+                    min = min_max_date$min,
+                    max = min_max_date$max,
+                    value = c(min_max_date$max - 180, min_max_date$max),
+                    timeFormat="%Y-%m-%d",
+                    width = "100%",
+                    timezone = Sys.timezone())
+      })
+
+      r_locals$measurement <- db_get_measurement(db_con(), r_locals$sensor_id,
+                                                 min_max_date$min, min_max_date$max)
+
+      print("input$plot_raw_data_end")
+
+      # r_locals$measurement_filter <- r_locals$measurement %>%
+      #   filter(timestamp >= r_locals$date_min & timestamp <= r_locals$date_max)
+      #
+      # r_locals$plot <- plot_main(data = r_locals$measurement_filter,
+      #                            y = "value",
+      #                            y_title = r_locals$parameter_name)
 
       # redraw corr plot if input$plot_corr_data was TRUE
+      # if (r_locals$keep_corr_plot_layer == TRUE){
+      #   updateCheckboxInput(session, "plot_corr_data", value = TRUE)
+      #   r_locals$keep_corr_plot_layer <- FALSE
+      # }
+
+    })
+
+    #### Date slider ####
+    observeEvent(input$date, {
+      req(input$date, r_locals$measurement)
+      print("input$date")
+
+      r_locals$measurement_filter <- r_locals$measurement %>%
+        filter(timestamp >= input$date[1] & timestamp <= input$date[2])
+
+      r_locals$plot_update <- r_locals$plot_update+1
+
+      # user info
+      r_locals$userinfo$date <- glue::glue("Date: {input$date}")
+    })
+
+    #### update plot ####
+    observeEvent(r_locals$plot_update, {
+      print("plot_update")
+
+      if (r_locals$start_plot == TRUE){
+        r_locals$plot <- plot_main(data = r_locals$measurement_filter,
+                                   y = "value",
+                                   y_title = r_locals$parameter_name,
+                                   date_min = input$date[1],
+                                   date_max = input$date[2])
+        r_locals$start_plot <- FALSE
+      } else {
+        # application already started : update plot
+        proxy_plot <- plot_update_main(r_locals$measurement_filter, "value", r_locals$parameter_name,
+                                       date_min = input$date[1],
+                                       date_max = input$date[2])
+
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("deleteTraces", 0) %>%
+          plotlyProxyInvoke("addTraces", proxy_plot$trace, 0) %>%
+          plotlyProxyInvoke("relayout", proxy_plot$layout, 0)
+        print("plot_update_main")
+      }
+
       if (r_locals$keep_corr_plot_layer == TRUE){
         updateCheckboxInput(session, "plot_corr_data", value = TRUE)
         r_locals$keep_corr_plot_layer <- FALSE
       }
 
-    })
+    }, ignoreInit=TRUE)
 
     #### Plot corr data bttn ####
     observeEvent(input$plot_corr_data, {
@@ -259,7 +349,7 @@ mod_edit_server <- function(id, r_globals){
       if (input$plot_corr_data == TRUE){
         plot_corr <- plot_add_corr_trace(data = r_locals$measurement,
                                        y = "value",
-                                       y_label = input$parameter)
+                                       y_label = r_locals$parameter_name)
 
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("addTraces", plot_corr, 0) # z-index = 0 to be below valid data
@@ -270,20 +360,20 @@ mod_edit_server <- function(id, r_globals){
       }
     })
 
-    #### Plot intervention bttn ####
-    observeEvent(input$plot_intervention, {
+    #### Plot plot_field bttn ####
+    observeEvent(input$plot_field, {
 
-      if (input$plot_intervention == TRUE){
+      if (input$plot_field == TRUE){
 
-        r_locals$intervention <- data_get_intervention(con = db_con(),
-                                                      station_id = r_globals$station$id,
-                                                      start_date = input$date[1],
-                                                      end_date = input$date[2])
+        r_locals$plot_field <- db_get_field(con = db_con(),
+                                            station_id = r_globals$station$id,
+                                            start_date = input$date[1],
+                                            end_date = input$date[2])
 
-        plot_intervention <- plot_intervention_lines(as.POSIXct(r_locals$intervention[["timestamp"]]))
+        plot_field <- plot_field_lines(as.POSIXct(r_locals$plot_field[["timestamp"]]))
 
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("relayout",  plot_intervention)
+          plotlyProxyInvoke("relayout",  plot_field)
 
       } else {
         plotlyProxy("plot") %>%
@@ -427,7 +517,7 @@ mod_edit_server <- function(id, r_globals){
 
         plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
                                          y = "edit",
-                                         y_label = input$parameter)
+                                         y_label = r_locals$parameter_name)
 
           plotlyProxy("plot") %>%
             plotlyProxyInvoke("addTraces", plot_edit, 2) # z-index = 2 to be above valid data
@@ -468,7 +558,7 @@ mod_edit_server <- function(id, r_globals){
 
         r_locals$plot <- plot_main(data = r_locals$measurement,
                                    y = "value",
-                                   y_title = input$parameter)
+                                   y_title = r_locals$parameter_name)
 
         # redraw corr plot if input$plot_corr_data was TRUE
         if (r_locals$keep_corr_plot_layer == TRUE){

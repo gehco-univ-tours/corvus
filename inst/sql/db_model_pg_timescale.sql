@@ -2,6 +2,7 @@ ALTER DATABASE corvus SET TIME ZONE 'UTC';
 
 CREATE TABLE author (
     id SERIAL PRIMARY KEY,
+    code VARCHAR(255) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL UNIQUE
 );
 
@@ -13,42 +14,11 @@ CREATE TABLE station (
     longitude DOUBLE PRECISION  NOT NULL
 );
 
-/*
-CREATE TABLE device_model (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    brand VARCHAR(255) NOT NULL,
-    type VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE device (
-    id SERIAL PRIMARY KEY,
-    serial_num VARCHAR(255) NOT NULL UNIQUE,
-    device_model_id INTEGER NOT NULL REFERENCES device_model(id)
-);
-
-CREATE TABLE installation (
-    id SERIAL PRIMARY KEY,
-    station_id INTEGER NOT NULL REFERENCES station(id),
-    device_id INTEGER NOT NULL REFERENCES device(id),
-    timestamp_start TIMESTAMPTZ NOT NULL,
-    timestamp_end TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE sensor_parameter (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    unit VARCHAR(255) NOT NULL,
-    accuracy DOUBLE PRECISION,
-    accuracy_unit VARCHAR(255),
-    device_model_id INTEGER NOT NULL REFERENCES device_model(id)
-);
-*/
-
 CREATE TABLE parameter (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    code VARCHAR(255) NOT NULL UNIQUE
+    code VARCHAR(255) NOT NULL UNIQUE,
+    unit VARCHAR(255)
 );
 
 CREATE TABLE sensor (
@@ -69,7 +39,7 @@ CREATE TABLE measurement (
     sensor_id INTEGER NOT NULL REFERENCES sensor(id),
     value DOUBLE PRECISION,
     value_corr DOUBLE PRECISION,
-    CONSTRAINT measurement_pkey UNIQUE (timestamp, sensor_id)
+    CONSTRAINT measurement_pkey PRIMARY KEY (timestamp, sensor_id)
 );
 
 SELECT create_hypertable('measurement', by_range('timestamp'));
@@ -91,12 +61,12 @@ CREATE TABLE correction (
 
 INSERT INTO correction_type (name) VALUES ('Offset'), ('Drift'), ('Delete'), ('Interpolation');
 
-CREATE TABLE intervention (
-    id SERIAL PRIMARY KEY,
-    timestamp_start TIMESTAMPTZ NOT NULL,
+CREATE TABLE field (
+    timestamp TIMESTAMPTZ NOT NULL,
     author_id INTEGER NOT NULL REFERENCES author(id),
     station_id INTEGER NOT NULL REFERENCES station(id),
-    comment TEXT
+    comment TEXT,
+    CONSTRAINT field_pkey PRIMARY KEY (timestamp, station_id)
 );
 
 -- Add view (optional)

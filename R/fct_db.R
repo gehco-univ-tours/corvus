@@ -7,11 +7,11 @@
 #' @export
 db_con <- function(){
   db_con <- DBI::dbConnect(RPostgres::Postgres(),
-                           host = Sys.getenv("DB_LOUROUX_DEV_HOST"),
-                           port = Sys.getenv("DB_LOUROUX_DEV_PORT"),
-                           dbname = Sys.getenv("DB_LOUROUX_DEV_NAME"),
-                           user      = Sys.getenv("DB_LOUROUX_DEV_USER"),
-                           password  = Sys.getenv("DB_LOUROUX_DEV_PWD"))
+                           host = Sys.getenv("DB_LOUROUX_PROD_HOST"),
+                           port = Sys.getenv("DB_LOUROUX_PROD_PORT"),
+                           dbname = Sys.getenv("DB_LOUROUX_PROD_NAME"),
+                           user      = Sys.getenv("DB_LOUROUX_PROD_USER"),
+                           password  = Sys.getenv("DB_LOUROUX_PROD_PWD"))
   return(db_con)
 }
 
@@ -54,7 +54,7 @@ db_insert_data <- function(db_conn, table_name, input_values) {
 #'
 #' @param con PqConnection: database connection
 #'
-#' @importFrom DBI dbGetQuery
+#' @importFrom DBI dbGetQuery dbDisconnect
 #' @importFrom stats setNames
 #'
 #' @return vector
@@ -73,7 +73,7 @@ db_get_authors <- function(con){
 #' @param con PqConnection: database connection
 #'
 #' @importFrom stats setNames
-#' @importFrom DBI dbGetQuery
+#' @importFrom DBI dbGetQuery dbDisconnect
 #'
 #' @return vector
 #' @export
@@ -116,7 +116,7 @@ db_get_station_parameters <- function(con, station_id){
 #' @param parameter_id integer: parameter id
 #'
 #' @importFrom stats setNames
-#' @importFrom DBI dbGetQuery
+#' @importFrom DBI dbGetQuery dbDisconnect
 #'
 #' @return vector
 #' @export
@@ -137,7 +137,7 @@ db_get_sensor_id <- function(con, station_id, parameter_id){
 #' @param con PqConnection: database connection
 #'
 #' @importFrom stats setNames
-#' @importFrom DBI dbGetQuery
+#' @importFrom DBI dbGetQuery dbDisconnect
 #'
 #' @return data.frame
 #' @export
@@ -154,7 +154,7 @@ db_get_correction_type <- function(con){
 #' @param sensor_id integer: sensor id
 #'
 #' @importFrom stats setNames
-#' @importFrom DBI dbGetQuery
+#' @importFrom DBI dbGetQuery dbDisconnect
 #'
 #' @return data.frame
 #' @export
@@ -216,4 +216,73 @@ db_get_parameters <- function(con){
   dbDisconnect(con)
   return(parameters)
 }
+
+#' Get all the intervention from the database
+#'
+#' @param con PqConnection: database connection
+#' @param station_id integer: station id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#'
+#' @return data.frame
+#' @export
+db_get_field <- function(con, station_id, start_date, end_date){
+  sql <- "SELECT * FROM field WHERE station_id = ?station_id AND timestamp >= ?start_date AND timestamp <= ?end_date;"
+  query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)
+  data <- dbGetQuery(con, query)
+  dbDisconnect(con)
+  return(data)
+}
+
+#' Min and Max date
+#'
+#' This function returns the minimum and maximum date of the measurements.
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#'
+#' @return data.frame
+#' @export
+db_min_max_date <- function(con, sensor_id){
+  sql <- "SELECT DATE(min(timestamp)) AS min, DATE(max(timestamp))+1 AS max
+    FROM measurement
+    WHERE sensor_id = ?sensor_id;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id)
+  data <- dbGetQuery(con, query)
+  dbDisconnect(con)
+  return(data)
+}
+
+#' Data
+#'
+#' This function returns the measurements based on the sensor id and the date range.
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#' @param min_date POSIXct: minimum date
+#' @param max_date POSIXct: maximum date
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate with_tz
+#'
+#' @return data.frame
+#' @export
+db_get_measurement <- function(con, sensor_id, min_date, max_date){
+  sql <- "SELECT timestamp, value, value_corr
+    FROM measurement
+    WHERE sensor_id = ?sensor_id AND timestamp >= ?min_date AND timestamp <= ?max_date
+    ORDER BY timestamp;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
+  data <- dbGetQuery(con, query) %>%
+    mutate(timestamp = as.POSIXct(timestamp, tz = 'UTC')) %>%
+    mutate(timestamp = with_tz(timestamp, tzone = Sys.timezone()))
+  dbDisconnect(con)
+  return(data)
+}
+
 
