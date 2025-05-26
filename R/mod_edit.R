@@ -184,7 +184,7 @@ mod_edit_server <- function(id, r_globals){
       plot_update = 0,
       date_slider_update = 0,
       plot_field = NULL,
-      vertical_lines = c(marker = NULL, field = NULL),
+      vertical_lines = c(marker = NULL, field = NULL, start = NULL, end = NULL),
       plot = NULL,
       keep_corr_plot_layer = FALSE,
       plot_layer = NULL,
@@ -330,7 +330,9 @@ mod_edit_server <- function(id, r_globals){
       r_locals$vertical_lines$marker <- plot_lines(as.POSIXct(event_data("plotly_click")$x), "orange")
       plotlyProxy("plot") %>%
         plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
-                                                        r_locals$vertical_lines$field$shapes)))
+                                                        r_locals$vertical_lines$field$shapes,
+                                                        r_locals$vertical_lines$start$shapes,
+                                                        r_locals$vertical_lines$end$shapes)))
     })
 
     #### update plot ####
@@ -395,13 +397,17 @@ mod_edit_server <- function(id, r_globals){
 
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
-                                                          r_locals$vertical_lines$field$shapes)))
+                                                          r_locals$vertical_lines$field$shapes,
+                                                          r_locals$vertical_lines$start$shapes,
+                                                          r_locals$vertical_lines$end$shapes)))
 
       } else {
         r_locals$vertical_lines$field <- NULL
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
-                                                          r_locals$vertical_lines$field$shapes)))
+                                                          r_locals$vertical_lines$field$shapes,
+                                                          r_locals$vertical_lines$start$shapes,
+                                                          r_locals$vertical_lines$end$shapes)))
       }
     })
 
@@ -419,14 +425,12 @@ mod_edit_server <- function(id, r_globals){
                       choices = db_get_correction_type(db_con()))
         })
         output$select_datestart_ui <- renderUI({
-          switchInput(inputId = ns("select_datestart"),
-                      label = "Select date/time start",
-                      onStatus = "success")
+          actionButton(inputId = ns("select_datestart"),
+                      label = "Start date")
         })
         output$select_dateend_ui <- renderUI({
-          switchInput(inputId = ns("select_dateend"),
-                      label = "Select date/time end",
-                      onStatus = "success")
+          actionButton(inputId = ns("select_dateend"),
+                      label = "End date")
         })
         # output$date_edit_ui <- renderUI({
         #   dateRangeInput(inputId = ns("date_edit"),
@@ -502,8 +506,29 @@ mod_edit_server <- function(id, r_globals){
     ##### Select date time ####
 
     observeEvent(input$select_datestart, {
-      if (input$select_datestart == TRUE) {
-      }
+      r_locals$select_datestart <- event_data("plotly_click")$x
+      # create a blue vertical line at select_datestart
+      r_locals$vertical_lines$start <- plot_lines(as.POSIXct(r_locals$select_datestart), "cornflowerblue")
+      plotlyProxy("plot") %>%
+        plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
+                                                        r_locals$vertical_lines$field$shapes,
+                                                        r_locals$vertical_lines$start$shapes,
+                                                        r_locals$vertical_lines$end$shapes)))
+      # info
+      r_locals$userinfo$select_datestart <- glue::glue("Select start date: {r_locals$select_datestart}")
+    })
+
+    observeEvent(input$select_dateend, {
+      r_locals$select_dateend <- event_data("plotly_click")$x
+      # create a red vertical line at select_dateend
+      r_locals$vertical_lines$end <- plot_lines(as.POSIXct(r_locals$select_dateend), "firebrick1")
+      plotlyProxy("plot") %>%
+        plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
+                                                        r_locals$vertical_lines$field$shapes,
+                                                        r_locals$vertical_lines$start$shapes,
+                                                        r_locals$vertical_lines$end$shapes)))
+      # info
+      r_locals$userinfo$select_dateend <- glue::glue("Select end date: {r_locals$select_dateend}")
     })
 
     ##### Edit date ####
