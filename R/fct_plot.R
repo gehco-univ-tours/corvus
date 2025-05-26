@@ -114,15 +114,16 @@ plot_vertical_line <- function(x = 0, color = "green") {
 
 #' Create a list of vertical dashed line annotations for longitudinal profile plots
 #'
-#' @param data A data frame containing the x-coordinates of the vertical lines.
+#' @param data dataframe containing the x-coordinates of the vertical lines.
+#' @param color text color of the vertical dashed lines (default is "green").
 #'
 #' @return A list object containing the vertical dashed line annotations.
 #'
 #' @export
-plot_field_lines <- function(data){
+plot_lines <- function(data, color="green"){
   shapes_list <- list (
     shapes = lapply(data, function(x) {
-      plot_vertical_line(x = x, color = "green")
+      plot_vertical_line(x = x, color = color)
     })
   )
   return (shapes_list)

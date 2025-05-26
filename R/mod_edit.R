@@ -78,17 +78,27 @@ mod_edit_ui <- function(id){
         ),
         column(
           width = 4,
-          uiOutput(ns("date_edit_ui")),
           fluidRow(
             column(
               width = 6,
-              uiOutput(ns("time_datestart_edit_ui"))
+              uiOutput(ns("select_datestart_ui"))
             ),
             column(
               width = 6,
-              uiOutput(ns("time_dateend_edit_ui"))
-            ),
-          ),
+              uiOutput(ns("select_dateend_ui"))
+            )
+          )
+          # uiOutput(ns("date_edit_ui")),
+          # fluidRow(
+          #   column(
+          #     width = 6,
+          #     uiOutput(ns("time_datestart_edit_ui"))
+          #   ),
+          #   column(
+          #     width = 6,
+          #     uiOutput(ns("time_dateend_edit_ui"))
+          #   ),
+          # ),
         ),
         column(
           width = 3,
@@ -131,7 +141,7 @@ mod_edit_ui <- function(id){
 #' edit Server Functions
 #'
 #' @noRd
-#' @importFrom plotly renderPlotly plotlyProxy plotlyProxyInvoke
+#' @importFrom plotly renderPlotly plotlyProxy plotlyProxyInvoke event_data
 #' @importFrom shinyjs disable enable hide show
 #' @importFrom dplyr mutate
 #' @importFrom lubridate hm ymd ymd_hm
@@ -142,7 +152,7 @@ mod_edit_server <- function(id, r_globals){
     ### DEV TOOLS ####
     output$printcheck = renderPrint({
       tryCatch({
-        # event_data("plotly_hover")
+        print(event_data("plotly_click"))
         print(paste0("keep_corr_plot_layer = ", r_locals$keep_corr_plot_layer))
         print(paste0("input$plot_raw_data = ", input$plot_raw_data))
         print(input$data)
@@ -174,6 +184,7 @@ mod_edit_server <- function(id, r_globals){
       plot_update = 0,
       date_slider_update = 0,
       plot_field = NULL,
+      vertical_lines = c(marker = NULL, field = NULL),
       plot = NULL,
       keep_corr_plot_layer = FALSE,
       plot_layer = NULL,
@@ -182,7 +193,9 @@ mod_edit_server <- function(id, r_globals){
       userinfo = list("User information"),
       edit_data = NULL,
       start_datetime_edit = NULL,
-      end_datetime_edit = NULL
+      end_datetime_edit = NULL,
+      select_datestart = NULL,
+      select_dateend = NULL
     )
 
     ### INIT ####
@@ -312,6 +325,14 @@ mod_edit_server <- function(id, r_globals){
       r_locals$userinfo$date <- glue::glue("Date: {input$date}")
     })
 
+    #### Marker plot ####
+    observeEvent(event_data("plotly_click"), {
+      r_locals$vertical_lines$marker <- plot_lines(as.POSIXct(event_data("plotly_click")$x), "orange")
+      plotlyProxy("plot") %>%
+        plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
+                                                        r_locals$vertical_lines$field$shapes)))
+    })
+
     #### update plot ####
     observeEvent(r_locals$plot_update, {
       print("plot_update")
@@ -370,14 +391,17 @@ mod_edit_server <- function(id, r_globals){
                                             start_date = input$date[1],
                                             end_date = input$date[2])
 
-        plot_field <- plot_field_lines(as.POSIXct(r_locals$plot_field[["timestamp"]]))
+        r_locals$vertical_lines$field <- plot_lines(as.POSIXct(r_locals$plot_field[["timestamp"]]), "green")
 
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("relayout",  plot_field)
+          plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
+                                                          r_locals$vertical_lines$field$shapes)))
 
       } else {
+        r_locals$vertical_lines$field <- NULL
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("relayout",  list(shapes = NULL))
+          plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
+                                                          r_locals$vertical_lines$field$shapes)))
       }
     })
 
@@ -394,25 +418,35 @@ mod_edit_server <- function(id, r_globals){
                       label = "Correction",
                       choices = db_get_correction_type(db_con()))
         })
-        output$date_edit_ui <- renderUI({
-          dateRangeInput(inputId = ns("date_edit"),
-                         label = "Date",
-                         start =  input$date[1],
-                         end =  input$date[2],
-                         startview = "month",
-                         min = input$date[1],
-                         max = input$date[2])
+        output$select_datestart_ui <- renderUI({
+          switchInput(inputId = ns("select_datestart"),
+                      label = "Select date/time start",
+                      onStatus = "success")
         })
-        output$time_datestart_edit_ui <- renderUI({
-          timeInput(inputId = ns("time_datestart_edit"),
-                    label = "Date start time",
-                    value = "00:00")
+        output$select_dateend_ui <- renderUI({
+          switchInput(inputId = ns("select_dateend"),
+                      label = "Select date/time end",
+                      onStatus = "success")
         })
-        output$time_dateend_edit_ui <- renderUI({
-          timeInput(inputId = ns("time_dateend_edit"),
-                    label = "Date end time",
-                    value = "00:00")
-        })
+        # output$date_edit_ui <- renderUI({
+        #   dateRangeInput(inputId = ns("date_edit"),
+        #                  label = "Date",
+        #                  start =  input$date[1],
+        #                  end =  input$date[2],
+        #                  startview = "month",
+        #                  min = input$date[1],
+        #                  max = input$date[2])
+        # })
+        # output$time_datestart_edit_ui <- renderUI({
+        #   timeInput(inputId = ns("time_datestart_edit"),
+        #             label = "Date start time",
+        #             value = "00:00")
+        # })
+        # output$time_dateend_edit_ui <- renderUI({
+        #   timeInput(inputId = ns("time_dateend_edit"),
+        #             label = "Date end time",
+        #             value = "00:00")
+        # })
         output$plot_edit_ui <- renderUI({
           checkboxInput(inputId = ns("plot_edit"),
                        label = "Plot change",
@@ -435,15 +469,21 @@ mod_edit_server <- function(id, r_globals){
         output$correction_ui <- renderUI({
           NULL
         })
-        output$date_edit_ui <- renderUI({
+        output$select_datestart_ui <- renderUI({
           NULL
         })
-        output$time_datestart_edit_ui <- renderUI({
+        output$select_dateend_ui <- renderUI({
           NULL
         })
-        output$time_dateend_edit_ui <- renderUI({
-          NULL
-        })
+        # output$date_edit_ui <- renderUI({
+        #   NULL
+        # })
+        # output$time_datestart_edit_ui <- renderUI({
+        #   NULL
+        # })
+        # output$time_dateend_edit_ui <- renderUI({
+        #   NULL
+        # })
         output$value_edit_ui <- renderUI({
           NULL
         })
@@ -456,6 +496,13 @@ mod_edit_server <- function(id, r_globals){
         output$comment_ui <- renderUI({
           NULL
         })
+      }
+    })
+
+    ##### Select date time ####
+
+    observeEvent(input$select_datestart, {
+      if (input$select_datestart == TRUE) {
       }
     })
 
