@@ -68,7 +68,7 @@ plot_update_main <- function(data, y, y_title, date_min, date_max){
   return(proxy)
 }
 
-#' plotly add raw data trace.
+#' plotly add data trace.
 #'
 #' @param data data frame containing the selected axis data.
 #' @param y text metric to be plotted on the y-axis.
@@ -76,7 +76,7 @@ plot_update_main <- function(data, y, y_title, date_min, date_max){
 #'
 #' @return list
 #' @export
-plot_add_corr_trace <- function(data, y, y_label){
+plot_add_trace <- function(data, y, y_label){
   trace <- list(
     x = data[["timestamp"]],
     y = data[[y]],

@@ -24,8 +24,8 @@ mod_edit_ui <- function(id){
       fluidRow(
         column(
           width = 2,
-          checkboxInput(inputId = ns("plot_corr_data"),
-                        label = "Plot corr data",
+          checkboxInput(inputId = ns("plot_raw_data"),
+                        label = "Plot raw data",
                         value = FALSE)
         ),
         column(
@@ -48,20 +48,18 @@ mod_edit_ui <- function(id){
                       label = "Parameter",
                       choices = NULL)
         ),
-        # column(
-        #   width = 2,
-        #   dateRangeInput(inputId = ns("date"),
-        #                  label = "Date",
-        #                  # actual date - 1 month
-        #                  start =  Sys.Date() - 180,
-        #                  end =  Sys.Date()
-        #                  )
-        # ),
         column(
           width = 2,
           tags$div(style = "margin-top: 30px;"),
-          actionButton(inputId = ns("plot_raw_data"),
-                       label = "Plot raw data"),
+          actionButton(inputId = ns("plot_corr_data"),
+                       label = "Plot corr data"),
+          tags$div(style = "margin-bottom: 20px;")
+        ),
+        column(
+          width = 2,
+          tags$div(style = "margin-top: 30px;"),
+          actionButton(inputId = ns("clean_all"),
+                       label = "Clean all"),
           tags$div(style = "margin-bottom: 20px;")
         ),
       ), # fluidRow
@@ -88,17 +86,6 @@ mod_edit_ui <- function(id){
               uiOutput(ns("select_dateend_ui"))
             )
           )
-          # uiOutput(ns("date_edit_ui")),
-          # fluidRow(
-          #   column(
-          #     width = 6,
-          #     uiOutput(ns("time_datestart_edit_ui"))
-          #   ),
-          #   column(
-          #     width = 6,
-          #     uiOutput(ns("time_dateend_edit_ui"))
-          #   ),
-          # ),
         ),
         column(
           width = 3,
@@ -153,8 +140,7 @@ mod_edit_server <- function(id, r_globals){
     output$printcheck = renderPrint({
       tryCatch({
         print(event_data("plotly_click"))
-        print(paste0("keep_corr_plot_layer = ", r_locals$keep_corr_plot_layer))
-        print(paste0("input$plot_raw_data = ", input$plot_raw_data))
+        print(paste0("keep_raw_plot_layer = ", r_locals$keep_raw_plot_layer))
         print(input$data)
         print("exists")
       },
@@ -182,11 +168,12 @@ mod_edit_server <- function(id, r_globals){
       date_min = NULL,
       date_max = NULL,
       plot_update = 0,
+      plot_index = 0,
       date_slider_update = 0,
       plot_field = NULL,
       vertical_lines = c(marker = NULL, field = NULL, start = NULL, end = NULL),
       plot = NULL,
-      keep_corr_plot_layer = FALSE,
+      keep_raw_plot_layer = FALSE,
       plot_layer = NULL,
       corr_plot = FALSE,
       edit_plot = FALSE,
@@ -199,7 +186,7 @@ mod_edit_server <- function(id, r_globals){
     )
 
     ### INIT ####
-    shinyjs::disable("plot_corr_data")
+    shinyjs::disable("plot_raw_data")
     shinyjs::disable("plot_field")
     shinyjs::disable("plot_edit")
 
@@ -260,17 +247,17 @@ mod_edit_server <- function(id, r_globals){
     })
 
     #### Plot bttn ####
-    observeEvent(input$plot_raw_data, {
-      print("input$plot_raw_data")
+    observeEvent(input$plot_corr_data, {
+      print("input$plot_corr_data")
 
-      shinyjs::enable("plot_corr_data")
+      shinyjs::enable("plot_raw_data")
       shinyjs::enable("plot_edit")
       shinyjs::enable("plot_field")
 
-      # set input$plot_corr_data and input$plot_edit to FALSE before new plot
-      if (input$plot_corr_data == TRUE){
-        r_locals$keep_corr_plot_layer = TRUE
-        updateCheckboxInput(session, "plot_corr_data", value = FALSE)
+      # set input$plot_raw_data and input$plot_edit to FALSE before new plot
+      if (input$plot_raw_data == TRUE){
+        r_locals$keep_raw_plot_layer = TRUE
+        updateCheckboxInput(session, "plot_raw_data", value = FALSE)
       }
 
       # check if input$plot_edit exist then remove the trace if is TRUE
@@ -287,27 +274,13 @@ mod_edit_server <- function(id, r_globals){
                     max = min_max_date$max,
                     value = c(min_max_date$max - 180, min_max_date$max),
                     timeFormat="%Y-%m-%d",
-                    width = "100%",
-                    timezone = Sys.timezone())
+                    width = "100%"
+                    # timezone = Sys.timezone()
+        )
       })
 
       r_locals$measurement <- db_get_measurement(db_con(), r_locals$sensor_id,
                                                  min_max_date$min, min_max_date$max)
-
-      print("input$plot_raw_data_end")
-
-      # r_locals$measurement_filter <- r_locals$measurement %>%
-      #   filter(timestamp >= r_locals$date_min & timestamp <= r_locals$date_max)
-      #
-      # r_locals$plot <- plot_main(data = r_locals$measurement_filter,
-      #                            y = "value",
-      #                            y_title = r_locals$parameter_name)
-
-      # redraw corr plot if input$plot_corr_data was TRUE
-      # if (r_locals$keep_corr_plot_layer == TRUE){
-      #   updateCheckboxInput(session, "plot_corr_data", value = TRUE)
-      #   r_locals$keep_corr_plot_layer <- FALSE
-      # }
 
     })
 
@@ -325,30 +298,20 @@ mod_edit_server <- function(id, r_globals){
       r_locals$userinfo$date <- glue::glue("Date: {input$date}")
     })
 
-    #### Marker plot ####
-    observeEvent(event_data("plotly_click"), {
-      r_locals$vertical_lines$marker <- plot_lines(as.POSIXct(event_data("plotly_click")$x), "orange")
-      plotlyProxy("plot") %>%
-        plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
-                                                        r_locals$vertical_lines$field$shapes,
-                                                        r_locals$vertical_lines$start$shapes,
-                                                        r_locals$vertical_lines$end$shapes)))
-    })
-
     #### update plot ####
     observeEvent(r_locals$plot_update, {
       print("plot_update")
 
       if (r_locals$start_plot == TRUE){
         r_locals$plot <- plot_main(data = r_locals$measurement_filter,
-                                   y = "value",
+                                   y = "value_corr",
                                    y_title = r_locals$parameter_name,
                                    date_min = input$date[1],
                                    date_max = input$date[2])
         r_locals$start_plot <- FALSE
       } else {
         # application already started : update plot
-        proxy_plot <- plot_update_main(r_locals$measurement_filter, "value", r_locals$parameter_name,
+        proxy_plot <- plot_update_main(r_locals$measurement_filter, "value_corr", r_locals$parameter_name,
                                        date_min = input$date[1],
                                        date_max = input$date[2])
 
@@ -359,27 +322,40 @@ mod_edit_server <- function(id, r_globals){
         print("plot_update_main")
       }
 
-      if (r_locals$keep_corr_plot_layer == TRUE){
-        updateCheckboxInput(session, "plot_corr_data", value = TRUE)
-        r_locals$keep_corr_plot_layer <- FALSE
+      if (r_locals$keep_raw_plot_layer == TRUE){
+        updateCheckboxInput(session, "plot_raw_data", value = TRUE)
+        r_locals$keep_raw_plot_layer <- FALSE
       }
 
     }, ignoreInit=TRUE)
 
-    #### Plot corr data bttn ####
-    observeEvent(input$plot_corr_data, {
+    #### Marker plot ####
+    observeEvent(event_data("plotly_click"), {
+      r_locals$vertical_lines$marker <- plot_lines(as.POSIXct(event_data("plotly_click")$x, tz = 'UTC'), "orange")
+      plotlyProxy("plot") %>%
+        plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
+                                                        r_locals$vertical_lines$field$shapes,
+                                                        r_locals$vertical_lines$start$shapes,
+                                                        r_locals$vertical_lines$end$shapes)))
+    })
 
-      if (input$plot_corr_data == TRUE){
-        plot_corr <- plot_add_corr_trace(data = r_locals$measurement,
-                                       y = "value",
-                                       y_label = r_locals$parameter_name)
+    #### Plot raw data bttn ####
+    observeEvent(input$plot_raw_data, {
+
+      if (input$plot_raw_data == TRUE){
+        plot_raw <- plot_add_trace(data = r_locals$measurement,
+                                   y = "value",
+                                   y_label = r_locals$parameter_name)
+
+        r_locals$plot_index <- r_locals$plot_index + 1
 
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("addTraces", plot_corr, 0) # z-index = 0 to be below valid data
+          plotlyProxyInvoke("addTraces", plot_raw, r_locals$plot_index) # z-index = 0 to be below raw data
 
       } else {
+        r_locals$plot_index <- r_locals$plot_index - 1
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 0)
+          plotlyProxyInvoke("deleteTraces", r_locals$plot_index)
       }
     })
 
@@ -393,7 +369,7 @@ mod_edit_server <- function(id, r_globals){
                                             start_date = input$date[1],
                                             end_date = input$date[2])
 
-        r_locals$vertical_lines$field <- plot_lines(as.POSIXct(r_locals$plot_field[["timestamp"]]), "green")
+        r_locals$vertical_lines$field <- plot_lines(as.POSIXct(r_locals$plot_field[["timestamp"]], tz = 'UTC'), "green")
 
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
@@ -432,25 +408,6 @@ mod_edit_server <- function(id, r_globals){
           actionButton(inputId = ns("select_dateend"),
                       label = "End date")
         })
-        # output$date_edit_ui <- renderUI({
-        #   dateRangeInput(inputId = ns("date_edit"),
-        #                  label = "Date",
-        #                  start =  input$date[1],
-        #                  end =  input$date[2],
-        #                  startview = "month",
-        #                  min = input$date[1],
-        #                  max = input$date[2])
-        # })
-        # output$time_datestart_edit_ui <- renderUI({
-        #   timeInput(inputId = ns("time_datestart_edit"),
-        #             label = "Date start time",
-        #             value = "00:00")
-        # })
-        # output$time_dateend_edit_ui <- renderUI({
-        #   timeInput(inputId = ns("time_dateend_edit"),
-        #             label = "Date end time",
-        #             value = "00:00")
-        # })
         output$plot_edit_ui <- renderUI({
           checkboxInput(inputId = ns("plot_edit"),
                        label = "Plot change",
@@ -479,15 +436,6 @@ mod_edit_server <- function(id, r_globals){
         output$select_dateend_ui <- renderUI({
           NULL
         })
-        # output$date_edit_ui <- renderUI({
-        #   NULL
-        # })
-        # output$time_datestart_edit_ui <- renderUI({
-        #   NULL
-        # })
-        # output$time_dateend_edit_ui <- renderUI({
-        #   NULL
-        # })
         output$value_edit_ui <- renderUI({
           NULL
         })
@@ -508,7 +456,7 @@ mod_edit_server <- function(id, r_globals){
     observeEvent(input$select_datestart, {
       r_locals$select_datestart <- event_data("plotly_click")$x
       # create a blue vertical line at select_datestart
-      r_locals$vertical_lines$start <- plot_lines(as.POSIXct(r_locals$select_datestart), "cornflowerblue")
+      r_locals$vertical_lines$start <- plot_lines(as.POSIXct(r_locals$select_datestart, tz = 'UTC'), "cornflowerblue")
       plotlyProxy("plot") %>%
         plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
                                                         r_locals$vertical_lines$field$shapes,
@@ -521,7 +469,7 @@ mod_edit_server <- function(id, r_globals){
     observeEvent(input$select_dateend, {
       r_locals$select_dateend <- event_data("plotly_click")$x
       # create a red vertical line at select_dateend
-      r_locals$vertical_lines$end <- plot_lines(as.POSIXct(r_locals$select_dateend), "firebrick1")
+      r_locals$vertical_lines$end <- plot_lines(as.POSIXct(r_locals$select_dateend, tz = 'UTC'), "red")
       plotlyProxy("plot") %>%
         plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
                                                         r_locals$vertical_lines$field$shapes,
@@ -529,15 +477,6 @@ mod_edit_server <- function(id, r_globals){
                                                         r_locals$vertical_lines$end$shapes)))
       # info
       r_locals$userinfo$select_dateend <- glue::glue("Select end date: {r_locals$select_dateend}")
-    })
-
-    ##### Edit date ####
-
-    observeEvent(c(ymd(input$date_edit), hm(input$time_datestart_edit), hm(input$time_dateend_edit)), {
-      r_locals$start_datetime_edit <- ymd_hm(paste(input$date_edit[1], input$time_datestart_edit, sep = " "))
-      r_locals$end_datetime_edit <- ymd_hm(paste(input$date_edit[2], input$time_dateend_edit, sep = " "))
-
-      r_locals$userinfo$edition <- glue::glue("Edition from {r_locals$start_datetime_edit} to {r_locals$end_datetime_edit}")
     })
 
     ##### Edition mode ####
@@ -579,24 +518,27 @@ mod_edit_server <- function(id, r_globals){
 
         if (input$correction == 1) { # offset
           r_locals$edit_data <- r_locals$measurement %>%
-            filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
-            mutate(edit = value + input$offset_edit)
+            filter(timestamp >= r_locals$select_datestart & timestamp <= r_locals$select_dateend) %>%
+            mutate(edit = value_corr + input$offset_edit)
         } else if (input$correction == 2) { # drift
           r_locals$edit_data <- r_locals$measurement %>%
-            filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
-            mutate(edit = data_edit_drift(timestamp, value, input$drift_edit))
+            filter(timestamp >= r_locals$select_datestart & timestamp <= r_locals$select_dateend) %>%
+            mutate(edit = data_edit_drift(timestamp, value_corr, input$drift_edit))
         }
 
         plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
                                          y = "edit",
                                          y_label = r_locals$parameter_name)
 
-          plotlyProxy("plot") %>%
-            plotlyProxyInvoke("addTraces", plot_edit, 2) # z-index = 2 to be above valid data
+        r_locals$plot_index <- r_locals$plot_index + 1
+
+        plotlyProxy("plot") %>%
+          plotlyProxyInvoke("addTraces", plot_edit, r_locals$plot_index)
 
       } else {
+        r_locals$plot_index <- r_locals$plot_index - 1
         plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 2)
+          plotlyProxyInvoke("deleteTraces", r_locals$plot_index)
       }
     })
 
@@ -613,29 +555,31 @@ mod_edit_server <- function(id, r_globals){
       if (!is.null(data)) {
         r_locals$userinfo$processing = data
 
-        # set input$plot_corr_data and input$plot_edit to FALSE before new plot
-        if (input$plot_corr_data == TRUE){
-          r_locals$keep_corr_plot_layer = TRUE
-          updateCheckboxInput(session, "plot_corr_data", value = FALSE)
+        r_locals$plot_update <- r_locals$plot_update+1
+
+        # set input$plot_raw_data and input$plot_edit to FALSE before new plot
+        if (input$plot_raw_data == TRUE){
+          r_locals$keep_raw_plot_layer = TRUE
+          updateCheckboxInput(session, "plot_raw_data", value = FALSE)
         }
 
         if (input$plot_edit == TRUE){
           updateCheckboxInput(session, "plot_edit", value = FALSE)
         }
 
-        r_locals$measurement <- data_get_measurement(con = db_con(),
+        r_locals$measurement <- db_get_measurement(con = db_con(),
                                                      sensor = r_locals$sensor_id,
                                                      start_date = input$date[1],
                                                      end_date = input$date[2])
 
         r_locals$plot <- plot_main(data = r_locals$measurement,
-                                   y = "value",
+                                   y = "value_corr",
                                    y_title = r_locals$parameter_name)
 
         # redraw corr plot if input$plot_corr_data was TRUE
-        if (r_locals$keep_corr_plot_layer == TRUE){
-          updateCheckboxInput(session, "plot_corr_data", value = TRUE)
-          r_locals$keep_corr_plot_layer <- FALSE
+        if (r_locals$keep_raw_plot_layer == TRUE){
+          updateCheckboxInput(session, "plot_raw_data", value = TRUE)
+          r_locals$keep_raw_plot_layer <- FALSE
         }
 
       } else {

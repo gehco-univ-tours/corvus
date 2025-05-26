@@ -279,8 +279,8 @@ db_get_measurement <- function(con, sensor_id, min_date, max_date){
     ORDER BY timestamp;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
-    mutate(timestamp = as.POSIXct(timestamp, tz = 'UTC')) %>%
-    mutate(timestamp = with_tz(timestamp, tzone = Sys.timezone()))
+    mutate(timestamp = as.POSIXct(timestamp, tz = 'UTC'))
+    # mutate(timestamp = with_tz(timestamp, tzone = Sys.timezone()))
   dbDisconnect(con)
   return(data)
 }
