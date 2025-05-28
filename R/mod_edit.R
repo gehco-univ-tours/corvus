@@ -18,8 +18,8 @@ mod_edit_ui <- function(id){
       useShinyjs(),  # Initialize shinyjs
       fluidRow(
         add_busy_bar(color = "#FF0000"),
-        plotlyOutput(ns("plot")),
-        uiOutput(ns("date_ui"))
+        plotlyOutput(ns("plot"))
+        # uiOutput(ns("date_ui"))
       ),
       fluidRow(
         column(
@@ -63,6 +63,20 @@ mod_edit_ui <- function(id){
           tags$div(style = "margin-bottom: 20px;")
         ),
       ), # fluidRow
+      fluidRow(
+        column(
+          width = 12,
+          sliderInput(ns("date"),
+                      "",
+                      min = db_min_max_date(db_con())$min,
+                      max = db_min_max_date(db_con())$max,
+                      value = c(db_min_max_date(db_con())$max - 180, db_min_max_date(db_con())$max),
+                      timeFormat="%Y-%m-%d",
+                      width = "100%",
+                      timezone = "UTC"
+          )
+        )
+      ),
       tags$hr(), # add horizontal line
       #### Edition mode UI ####
       fluidRow(
@@ -267,17 +281,17 @@ mod_edit_server <- function(id, r_globals){
 
       min_max_date <- db_min_max_date(db_con(), r_locals$sensor_id)
 
-      output$date_ui <- renderUI({
-        sliderInput(ns("date"),
-                    "",
-                    min = min_max_date$min,
-                    max = min_max_date$max,
-                    value = c(min_max_date$max - 180, min_max_date$max),
-                    timeFormat="%Y-%m-%d",
-                    width = "100%"
-                    # timezone = Sys.timezone()
-        )
-      })
+      # output$date_ui <- renderUI({
+      #   sliderInput(ns("date"),
+      #               "",
+      #               min = min_max_date$min,
+      #               max = min_max_date$max,
+      #               value = c(min_max_date$max - 180, min_max_date$max),
+      #               timeFormat="%Y-%m-%d",
+      #               width = "100%"
+      #               # timezone = Sys.timezone()
+      #   )
+      # })
 
       r_locals$measurement <- db_get_measurement(db_con(), r_locals$sensor_id,
                                                  min_max_date$min, min_max_date$max)
@@ -285,20 +299,20 @@ mod_edit_server <- function(id, r_globals){
     })
 
     #### Date slider ####
-    observeEvent(input$date, {
-      req(input$date, r_locals$measurement)
-      print("input$date")
+    # observeEvent(input$date, {
+    #   req(input$date, r_locals$measurement)
+    #   print("input$date")
+    #
+    #   r_locals$measurement_filter <- r_locals$measurement %>%
+    #     filter(timestamp >= input$date[1] & timestamp <= input$date[2])
+    #
+    #   r_locals$plot_update <- r_locals$plot_update+1
+    #
+    #   # user info
+    #   r_locals$userinfo$date <- glue::glue("Date: {input$date}")
+    # })
 
-      r_locals$measurement_filter <- r_locals$measurement %>%
-        filter(timestamp >= input$date[1] & timestamp <= input$date[2])
-
-      r_locals$plot_update <- r_locals$plot_update+1
-
-      # user info
-      r_locals$userinfo$date <- glue::glue("Date: {input$date}")
-    })
-
-    #### update plot ####
+    #### Update plot ####
     observeEvent(r_locals$plot_update, {
       print("plot_update")
 

@@ -241,16 +241,14 @@ db_get_field <- function(con, station_id, start_date, end_date){
 #' This function returns the minimum and maximum date of the measurements.
 #'
 #' @param con PqConnection: database connection
-#' @param sensor_id integer: sensor id
 #'
 #' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
 #'
 #' @return data.frame
 #' @export
-db_min_max_date <- function(con, sensor_id){
+db_min_max_date <- function(con){
   sql <- "SELECT DATE(min(timestamp)) AS min, DATE(max(timestamp))+1 AS max
-    FROM measurement
-    WHERE sensor_id = ?sensor_id;"
+    FROM measurement;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id)
   data <- dbGetQuery(con, query)
   dbDisconnect(con)

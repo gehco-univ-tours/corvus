@@ -4,12 +4,10 @@
 \alias{db_min_max_date}
 \title{Min and Max date}
 \usage{
-db_min_max_date(con, sensor_id)
+db_min_max_date(con)
 }
 \arguments{
 \item{con}{PqConnection: database connection}
-
-\item{sensor_id}{integer: sensor id}
 }
 \value{
 data.frame
