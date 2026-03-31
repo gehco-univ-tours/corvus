@@ -311,7 +311,7 @@ mod_edit_server <- function(id, r_globals){
     #   print("input$date")
     #
     #   r_locals$measurement_filter <- r_locals$measurement %>%
-    #     filter(timestamp >= input$date[1] & timestamp <= input$date[2])
+    #     filter(ts >= input$date[1] & ts <= input$date[2])
     #
     #   r_locals$plot_update <- r_locals$plot_update+1
     #
@@ -407,7 +407,7 @@ mod_edit_server <- function(id, r_globals){
                                             start_date = input$date[1],
                                             end_date = input$date[2])
 
-        r_locals$vertical_lines$field <- plot_lines(as.POSIXct(r_locals$plot_field[["timestamp"]], tz = 'UTC'), "green")
+        r_locals$vertical_lines$field <- plot_lines(as.POSIXct(r_locals$plot_field[["ts"]], tz = 'UTC'), "green")
 
         plotlyProxy("plot") %>%
           plotlyProxyInvoke("relayout",  list (shapes = c(r_locals$vertical_lines$marker$shapes,
@@ -575,12 +575,12 @@ mod_edit_server <- function(id, r_globals){
 
       if (input$correction == 1) { # offset
         r_locals$edit_data <- r_locals$measurement %>%
-          filter(timestamp >= r_locals$select_datestart & timestamp <= r_locals$select_dateend) %>%
+          filter(ts >= r_locals$select_datestart & ts <= r_locals$select_dateend) %>%
           mutate(edit = value_corr + input$offset_edit)
       } else if (input$correction == 2) { # drift
         r_locals$edit_data <- r_locals$measurement %>%
-          filter(timestamp >= r_locals$select_datestart & timestamp <= r_locals$select_dateend) %>%
-          mutate(edit = data_edit_drift(timestamp, value_corr, input$drift_edit))
+          filter(ts >= r_locals$select_datestart & ts <= r_locals$select_dateend) %>%
+          mutate(edit = data_edit_drift(ts, value_corr, input$drift_edit))
       }
 
       plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,

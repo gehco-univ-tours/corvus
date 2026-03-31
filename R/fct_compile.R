@@ -42,23 +42,23 @@ compile_raw <- function(con, station, parameter, sensor){
   compile <- compile %>%
     mutate_all(~replace(., . == "---", NA)) %>%
     filter(!is.na(date) & !is.na(time)) %>%
-    mutate(timestamp = dmy_hms(paste(date, time, sep = " ")),
+    mutate(ts = dmy_hms(paste(date, time, sep = " ")),
            data = as.numeric(.data[[station_name]])) %>%
-    distinct(timestamp, .keep_all = TRUE) %>%
-    filter(!is.na(timestamp)) %>%
-    select(timestamp, data)
+    distinct(ts, .keep_all = TRUE) %>%
+    filter(!is.na(ts)) %>%
+    select(ts, data)
 
   compile <- compile %>%
-    mutate(sensor_id = rep(sensor, length(compile$timestamp)))
+    mutate(sensor_id = rep(sensor, length(compile$ts)))
 
   # insert data
   # Create the SQL statement for insertion
-  sql <- glue::glue("INSERT INTO measurement (timestamp, sensor_id, value, value_corr)
-                     VALUES ($1, $2, $3, $4) ON CONFLICT (timestamp, sensor_id) DO NOTHING")
+  sql <- glue::glue("INSERT INTO measurement (ts, sensor_id, value, value_corr)
+                     VALUES ($1, $2, $3, $4) ON CONFLICT (ts, sensor_id) DO NOTHING")
 
   # Prepare the SQL statement
   result <- dbSendQuery(con, sql,
-                        params = list(compile$timestamp,
+                        params = list(compile$ts,
                                       compile$sensor_id,
                                       compile$data,
                                       compile$data))
@@ -169,15 +169,15 @@ compile_gb <- function(con){
     # read the file
     data <- read.csv(file, stringsAsFactors = FALSE, sep = ";", row.names = NULL, header = TRUE) %>%
       filter (!is.na(Date) & !is.na(Time)) %>%
-      # format date/time to timestamp AND set timezone to UTC+1 without changing time (summer/winter)
-      mutate(timestamp = dmy_hms(paste(Date, Time, sep = " "))) %>%
+      # format date/time to ts AND set timezone to UTC+1 without changing time (summer/winter)
+      mutate(ts = dmy_hms(paste(Date, Time, sep = " "))) %>%
       select(c(-Date, -Time)) %>%
-      # remove non numeric values from the data but not the timestamp
-      mutate(across(-timestamp, ~ as.numeric(as.character(.)))) %>%
-      distinct(timestamp, .keep_all = TRUE) %>%
-      filter(!is.na(timestamp)) %>%
-      # Move timestamp to the first column
-      select(timestamp, everything()) %>%
+      # remove non numeric values from the data but not the ts
+      mutate(across(-ts, ~ as.numeric(as.character(.)))) %>%
+      distinct(ts, .keep_all = TRUE) %>%
+      filter(!is.na(ts)) %>%
+      # Move ts to the first column
+      select(ts, everything()) %>%
       # remove capital letters from the column names
       rename_all(tolower)
     # append the data to the compile data frame
@@ -185,8 +185,8 @@ compile_gb <- function(con){
   }
 
   compile <- compile %>%
-    distinct(timestamp, .keep_all = TRUE) %>%
-    arrange(timestamp)
+    distinct(ts, .keep_all = TRUE) %>%
+    arrange(ts)
 
   # sensor id
   sensor <- c("level"=4, "temperature"=5, "conductivity"=6, "turbidity"=7, "do_concentration"=8, "do_saturation"=9, "ph"=10)
@@ -195,23 +195,23 @@ compile_gb <- function(con){
   sensor_data <- list()
   for (i in 1:length(sensor)){
     sensor_data[[names(sensor)[[i]]]] <- compile %>%
-      select(timestamp, names(sensor)[i]) %>%
+      select(ts, names(sensor)[i]) %>%
       filter(!is.na(.data[[names(sensor)[i]]])) %>%
-      mutate(sensor_id = rep(sensor[[i]], length(timestamp))) %>%
+      mutate(sensor_id = rep(sensor[[i]], length(ts))) %>%
       rename(value = names(sensor)[i])
   }
 
   # Insert data into the database
   # Create the SQL statement for insertion
-  sql <- glue::glue("INSERT INTO measurement (timestamp, sensor_id, value, value_corr)
-                     VALUES ($1, $2, $3, $4) ON CONFLICT (timestamp, sensor_id) DO NOTHING")
+  sql <- glue::glue("INSERT INTO measurement (ts, sensor_id, value, value_corr)
+                     VALUES ($1, $2, $3, $4) ON CONFLICT (ts, sensor_id) DO NOTHING")
 
   # create a list with the number of rows inserted for each sensor
   rows_affected <- c()
   for (i in 1:length(sensor_data)){
     # Prepare the SQL statement
     result <- dbSendQuery(con, sql,
-                          params = list(sensor_data[[i]]$timestamp,
+                          params = list(sensor_data[[i]]$ts,
                                         sensor_data[[i]]$sensor_id,
                                         sensor_data[[i]]$value,
                                         sensor_data[[i]]$value))

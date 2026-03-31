@@ -12,7 +12,7 @@
 #' @export
 plot_main <- function(data, y, y_title, date_min, date_max){
   plot <- plot_ly() %>%
-    add_trace(x = data[["timestamp"]],
+    add_trace(x = data[["ts"]],
               y = data[[y]],
               type = 'scatter',
               mode = 'lines',
@@ -46,7 +46,7 @@ plot_main <- function(data, y, y_title, date_min, date_max){
 plot_update_main <- function(data, y, y_title, date_min, date_max){
 
   proxy_trace <- list(
-    x = data[["timestamp"]],
+    x = data[["ts"]],
     y = data[[y]],
     type = 'scatter',
     mode = 'lines',
@@ -78,7 +78,7 @@ plot_update_main <- function(data, y, y_title, date_min, date_max){
 #' @export
 plot_add_trace <- function(data, y, y_label){
   trace <- list(
-    x = data[["timestamp"]],
+    x = data[["ts"]],
     y = data[[y]],
     type = 'scatter',
     mode = 'lines',
@@ -139,7 +139,7 @@ plot_lines <- function(data, color="green"){
 #' @export
 plot_add_edit_trace <- function(data, y, y_label){
   trace <- list(
-    x = data[["timestamp"]],
+    x = data[["ts"]],
     y = data[[y]],
     type = 'scatter',
     mode = 'lines',
@@ -193,7 +193,7 @@ plot_add_valid_period <- function(data){
 
   # create a plot frame with x-axis min max from time period
   plot <- plot_ly() %>%
-    add_trace(x = data[["timestamp"]],
+    add_trace(x = data[["ts"]],
               y = data[["value_corr"]],
               type = 'scatter',
               mode = 'lines+markers',

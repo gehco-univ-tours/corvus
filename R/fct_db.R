@@ -161,7 +161,7 @@ db_get_correction_type <- function(con){
 db_get_interval <- function(con, sensor_id){
   sql <- "WITH intervals AS (
               SELECT
-                  timestamp - LAG(timestamp) OVER (ORDER BY timestamp) AS interval
+                  ts - LAG(ts) OVER (ORDER BY ts) AS interval
               FROM
                   measurement
           	WHERE sensor_id = ?sensor_id
@@ -229,7 +229,7 @@ db_get_parameters <- function(con){
 #' @return data.frame
 #' @export
 db_get_field <- function(con, station_id, start_date, end_date){
-  sql <- "SELECT * FROM field WHERE station_id = ?station_id AND timestamp >= ?start_date AND timestamp <= ?end_date;"
+  sql <- "SELECT * FROM field WHERE station_id = ?station_id AND ts >= ?start_date AND ts <= ?end_date;"
   query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)
   data <- dbGetQuery(con, query)
   dbDisconnect(con)
@@ -247,7 +247,7 @@ db_get_field <- function(con, station_id, start_date, end_date){
 #' @return data.frame
 #' @export
 db_min_max_date <- function(con){
-  sql <- "SELECT DATE(min(timestamp)) AS min, DATE(max(timestamp))+1 AS max
+  sql <- "SELECT DATE(min(ts)) AS min, DATE(max(ts))+1 AS max
     FROM measurement;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id)
   data <- dbGetQuery(con, query)
@@ -271,14 +271,14 @@ db_min_max_date <- function(con){
 #' @return data.frame
 #' @export
 db_get_measurement <- function(con, sensor_id, min_date, max_date){
-  sql <- "SELECT timestamp, value, value_corr
+  sql <- "SELECT ts, value, value_corr
     FROM measurement
-    WHERE sensor_id = ?sensor_id AND timestamp >= ?min_date AND timestamp <= ?max_date
-    ORDER BY timestamp;"
+    WHERE sensor_id = ?sensor_id AND ts >= ?min_date AND ts <= ?max_date
+    ORDER BY ts;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
-    mutate(timestamp = as.POSIXct(timestamp, tz = 'UTC'))
-    # mutate(timestamp = with_tz(timestamp, tzone = Sys.timezone()))
+    mutate(ts = as.POSIXct(ts, tz = 'UTC'))
+    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   dbDisconnect(con)
   return(data)
 }
