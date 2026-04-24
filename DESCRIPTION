@@ -11,6 +11,8 @@ Imports:
     curl,
     DBI,
     dplyr,
+    DT,
+    dygraphs,
     glue,
     golem (>= 0.4.1),
     leaflet,
@@ -26,7 +28,8 @@ Imports:
     stats,
     stringr,
     tidyselect,
-    utils
+    utils,
+    xts
 Suggests: 
     spelling,
     testthat (>= 3.0.0)

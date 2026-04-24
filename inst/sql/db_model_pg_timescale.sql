@@ -69,6 +69,14 @@ CREATE TABLE field (
     CONSTRAINT field_pkey PRIMARY KEY (ts, station_id)
 );
 
+CREATE TABLE validated_period (
+    id SERIAL PRIMARY KEY,
+    sensor_id INTEGER NOT NULL REFERENCES sensor(id),
+    ts_start TIMESTAMPTZ NOT NULL,
+    ts_end TIMESTAMPTZ NOT NULL,
+    comment TEXT
+);
+
 -- Add view (optional)
 
 -- hourly materialized view

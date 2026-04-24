@@ -9,3 +9,5 @@ $run_dev.*
 ^README\.Rmd$
 ^CITATION\.cff$
 ^inst/ext_data$
+^\.positai$
+^\.claude$

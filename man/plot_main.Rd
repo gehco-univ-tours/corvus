@@ -2,17 +2,11 @@
 % Please edit documentation in R/fct_plot.R
 \name{plot_main}
 \alias{plot_main}
-\title{Plot a plotly graph with selected parameter.}
+\title{plot_main}
 \usage{
 plot_main(data, y, y_title, date_min, date_max)
 }
 \arguments{
-\item{data}{dataframe sensors dataset.}
-
-\item{y}{text parameter selected.}
-
-\item{y_title}{text parameter selected name.}
-
 \item{date_min}{minimum date xaxis}
 
 \item{date_max}{maximum date xaxis}
@@ -21,5 +15,5 @@ plot_main(data, y, y_title, date_min, date_max)
 plotly graph.
 }
 \description{
-Plot a plotly graph with selected parameter.
+plot_main
 }

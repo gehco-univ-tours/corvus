@@ -8,7 +8,7 @@ app_server <- function(input, output, session) {
 
   ### REACTIVES ####
   r_globals <- reactiveValues(
-    all_stations = data_get_stations(db_con()),
+    all_stations = db_get_all_stations(db_con()),
     station = NULL
   )
   # Modules

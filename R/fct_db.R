@@ -66,6 +66,24 @@ db_get_authors <- function(con){
   return(authors)
 }
 
+#' Get all the station from database
+#'
+#' @param con PqConnection: database connection
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect
+#'
+#' @return data.frame
+#' @export
+#' @examples
+#' con <- db_con()
+#' db_get_all_stations(con)
+db_get_all_stations <- function(con){
+  sql <- "SELECT * FROM station;"
+  data <- dbGetQuery(con, sql)
+  dbDisconnect(con)
+  return(data)
+}
+
 #' stations list
 #'
 #' This function returns a list of stations from the database.
@@ -105,6 +123,26 @@ db_get_station_parameters <- function(con, station_id){
   parameters <- setNames(data$id, data$name)
   dbDisconnect(con)
   return(parameters)
+}
+
+#' get parameter unit
+#'
+#' @param con PqConnection: database connection
+#' @param parameter_id integer: parameter id
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier
+#'
+#' @return character
+#' @export
+db_get_parameter_unit <- function(con, parameter_id){
+  sql <- "SELECT unit
+    FROM parameter
+    WHERE id = ?parameter_id;"
+  query <- sqlInterpolate(con, sql, parameter_id = parameter_id)
+  data <- dbGetQuery(con, query)
+  unit <- data$unit
+  dbDisconnect(con)
+  return(unit)
 }
 
 #' Sensor id
@@ -277,10 +315,53 @@ db_get_measurement <- function(con, sensor_id, min_date, max_date){
     ORDER BY ts;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
-    mutate(ts = as.POSIXct(ts, tz = 'UTC'))
-    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
+    mutate(ts = as.POSIXct(ts, tz = 'UTC')) %>%
+    mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   dbDisconnect(con)
   return(data)
 }
 
+#' Field data
+#'
+#' This function returns the field data based on the station id and the date range.
+#'
+#' @param con PqConnection: database connection
+#' @param station_id integer: station id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate with_tz
+#'
+#' @return data.frame
+#' @export
+db_get_fieldwork_data <- function(con, station_id, start_date, end_date){
+  sql <- "SELECT ts, author.code AS author, comment
+    FROM fieldwork
+    JOIN author ON fieldwork.author_id = author.id
+    WHERE station_id = ?station_id AND ts >= ?start_date AND ts <= ?end_date
+    ORDER BY ts;"
+  query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)
+  data <- dbGetQuery(con, query) %>%
+    mutate(ts = as.POSIXct(ts, tz = 'UTC')) %>%
+    mutate(ts = with_tz(ts, tzone = Sys.timezone()))
+  dbDisconnect(con)
+  return(data)
+}
+
+db_get_validated_period_data <- function(con, sensor_id, start_date, end_date){
+  sql <- "SELECT *
+    FROM validated_period
+    WHERE sensor_id = ?sensor_id AND ts_start >= ?start_date AND ts_end <= ?end_date
+    ORDER BY ts_start;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date)
+  data <- dbGetQuery(con, query) %>%
+    mutate(ts_start = as.POSIXct(ts_start, tz = 'UTC')) %>%
+    mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC')) %>%
+    mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
+    mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
+  dbDisconnect(con)
+  return(data)
+}
 
