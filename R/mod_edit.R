@@ -6,7 +6,8 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
+#' @importFrom shiny NS tagList fluidPage fluidRow column selectInput
+#' @importFrom shiny actionButton sliderInput verbatimTextOutput renderPrint
 #' @importFrom dygraphs dygraphOutput
 #' @importFrom shinybusy add_busy_bar
 #' @importFrom shinyWidgets switchInput timeInput
@@ -23,7 +24,8 @@ mod_edit_ui <- function(id){
           width = 2,
           uiOutput(ns("checkbox_measurement_tocorr_raw_ui")),
           uiOutput(ns("checkbox_measurement_tocorr_corr_ui")),
-          uiOutput(ns("checkbox_measurement_additional_ui")),
+          uiOutput(ns("checkbox_measurement_edit_ui")),
+          uiOutput(ns("checkbox_measurement_add_ui")),
           uiOutput(ns("checkbox_fieldwork_ui")),
           uiOutput(ns("checkbox_validated_period_ui"))
         ),
@@ -87,15 +89,19 @@ mod_edit_ui <- function(id){
           uiOutput(ns("author_ui"))
         ),
         column(
-          width = 4,
+          width = 3,
           fluidRow(
             column(
-              width = 6,
+              width = 4,
               uiOutput(ns("set_start_date_ui"))
             ),
             column(
-              width = 6,
+              width = 4,
               uiOutput(ns("set_end_date_ui"))
+            ),
+            column(
+              width = 4,
+              uiOutput(ns("reset_start_end_date_ui"))
             )
           )
         ),
@@ -108,7 +114,7 @@ mod_edit_ui <- function(id){
           uiOutput(ns("validate_edit_ui"))
         ),
         column(
-          width = 3,
+          width = 4,
           uiOutput(ns("comment_ui"))
         )
       ), # fluidRow
@@ -140,6 +146,10 @@ mod_edit_ui <- function(id){
 #' edit Server Functions
 #'
 #' @noRd
+#' @importFrom shiny moduleServer observeEvent renderUI updateSelectInput
+#' @importFrom shiny selectInput actionButton sliderInput verbatimTextOutput
+#' @importFrom shiny renderPrint req reactiveValues checkboxInput
+#' @importFrom shiny updateCheckboxInput
 #' @importFrom dygraphs renderDygraph dyEvent dyShading
 #' @importFrom shinyjs disable enable hide show
 #' @importFrom dplyr mutate
@@ -181,6 +191,7 @@ mod_edit_server <- function(id, r_globals){
       parameter_add_update = 0,
       data = list(
         measurement_tocorr = NULL,
+        measurement_edit = NULL,
         measurement_add = NULL,
         fieldwork = NULL,
         validated = NULL
@@ -188,7 +199,8 @@ mod_edit_server <- function(id, r_globals){
       checkbox_graph = list(
         measurement_tocorr_raw = TRUE,
         measurement_tocorr_corr = FALSE,
-        measurement_additional = FALSE,
+        measurement_add = FALSE,
+        measurement_edit = FALSE,
         fieldwork = FALSE,
         validated_period = FALSE
       ),
@@ -302,8 +314,13 @@ mod_edit_server <- function(id, r_globals){
                       label = paste("Corrected data (", r_locals$parameter_tocorr_name, ")", sep = ""),
                       value = FALSE)
       })
-      output$checkbox_measurement_additional_ui <- renderUI({
-        checkboxInput(inputId = ns("checkbox_measurement_additional"),
+      output$checkbox_measurement_edit_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_edit"),
+                      label = paste("Edited data (", r_locals$parameter_add_name, ")", sep = ""),
+                      value = FALSE)
+      })
+      output$checkbox_measurement_add_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_add"),
                       label = paste("Additional data (", r_locals$parameter_add_name, ")", sep = ""),
                       value = FALSE)
       })
@@ -323,6 +340,9 @@ mod_edit_server <- function(id, r_globals){
       r_locals$start_date = NULL
       r_locals$end_date = NULL
 
+      # reset measurement edit
+      r_locals$data$measurement_edit = NULL
+
       r_locals$update_plot <- r_locals$update_plot + 1
 
       print("Plot bttn")
@@ -333,16 +353,14 @@ mod_edit_server <- function(id, r_globals){
 
     observeEvent(list(input$checkbox_measurement_tocorr_raw,
                       input$checkbox_measurement_tocorr_corr,
-                      input$checkbox_measurement_additional
-                      # input$checkbox_fieldwork
-                      # input$checkbox_validated_period
+                      input$checkbox_measurement_add,
+                      input$checkbox_measurement_edit
                       ), ignoreInit = TRUE, {
 
       r_locals$checkbox_graph$measurement_tocorr_raw <- input$checkbox_measurement_tocorr_raw
       r_locals$checkbox_graph$measurement_tocorr_corr <- input$checkbox_measurement_tocorr_corr
-      r_locals$checkbox_graph$measurement_additional <- input$checkbox_measurement_additional
-      # r_locals$checkbox_graph$fieldwork <- input$checkbox_fieldwork
-      # r_locals$checkbox_graph$validated_period <- input$checkbox_validated_period
+      r_locals$checkbox_graph$measurement_add <- input$checkbox_measurement_add
+      r_locals$checkbox_graph$measurement_edit <- input$checkbox_measurement_edit
 
       r_locals$update_plot = r_locals$update_plot + 1
 
@@ -453,6 +471,10 @@ mod_edit_server <- function(id, r_globals){
 
       r_locals$start_or_end <- NULL
 
+      if (!is.null(r_locals$start_date) && !is.null(r_locals$end_date)){
+        shinyjs::delay(100, shinyjs::enable("plot_edit"))
+      }
+
       print("Click on plot")
     })
 
@@ -491,13 +513,17 @@ mod_edit_server <- function(id, r_globals){
           actionButton(inputId = ns("set_end_date"),
                       label = "Set end date")
         })
+        output$reset_start_end_date_ui <- renderUI({
+          actionButton(inputId = ns("reset_start_end_date"),
+                       label = "Reset dates")
+        })
         output$plot_edit_ui <- renderUI({
           actionButton(inputId = ns("plot_edit"),
-                       label = "Plot change")
+                       label = "Plot edit")
         })
         output$validate_edit_ui <- renderUI({
           actionButton(inputId = ns("validate_edit"),
-                       label = "Validate")
+                       label = "Validate edit")
         })
         output$comment_ui <- renderUI({
           textAreaInput(inputId = ns("comment"),
@@ -549,6 +575,14 @@ mod_edit_server <- function(id, r_globals){
     })
 
 
+    ##### Reset start and end date button ####
+
+    observeEvent(input$reset_start_end_date, {
+      r_locals$start_or_end = NULL
+      r_locals$start_date = NULL
+      r_locals$end_date = NULL
+    })
+
     ##### Enable/disable plot_edit button ####
 
     ##### Edition mode ####
@@ -585,6 +619,42 @@ mod_edit_server <- function(id, r_globals){
 
     #### Plot change ####
 
+    observeEvent(input$plot_edit, {
+      req(r_locals$start_date, r_locals$end_date)
+
+      # get data to correct
+      r_locals$data$measurement_edit <- r_locals$data$measurement_tocorr %>%
+        dplyr::filter(ts >= r_locals$start_date & ts <= r_locals$end_date)
+
+
+
+      # apply correction
+      if (input$correction == 1) { # offset
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value_edit = value_edit + input$offset_edit)
+      }
+
+      # updateCheckboxInput(session, ns("checkbox_measurement_edit"), value = TRUE)
+
+      # else if (input$correction == 2){ # drift
+      #   data_to_correct <- data_to_correct %>%
+      #     dplyr::mutate(edit = data_edit_drift(timestamp, value_corr, input$drift_edit),
+      #                   value_corr = value_corr + edit)
+      # }
+
+      if(!isTRUE(input$checkbox_measurement_edit)){
+        updateCheckboxInput(session, "checkbox_measurement_edit", value = TRUE)
+      } else {
+        r_locals$update_plot <- r_locals$update_plot + 1
+      }
+
+      shinyjs::enable("validate_edit")
+
+      print("Plot change")
+    })
+
     #### Validate change ####
+
+    # change data$measurement_tocorr[["edit"]] with new value to change graph
   })
 }

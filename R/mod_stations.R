@@ -6,7 +6,8 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
+#' @importFrom shiny NS tagList fluidPage fluidRow actionButton
+#' @importFrom shiny verbatimTextOutput column
 #' @importFrom leaflet leafletOutput
 mod_stations_ui <- function(id){
   ns <- NS(id)
@@ -35,8 +36,9 @@ mod_stations_ui <- function(id){
 #' stations Server Functions
 #'
 #' @noRd
-#'
-#' @importFrom leaflet leaflet renderLeaflet addTiles addMarkers fitBounds addScaleBar scaleBarOptions labelOptions
+#' @importFrom shiny moduleServer renderPrint observeEvent reactiveValues
+#' @importFrom leaflet leaflet renderLeaflet addTiles addMarkers fitBounds
+#' @importFrom leaflet addScaleBar scaleBarOptions labelOptions
 mod_stations_server <- function(id, r_globals){
   moduleServer( id, function(input, output, session){
     ns <- session$ns

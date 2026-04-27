@@ -6,7 +6,8 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
+#' @importFrom shiny NS tagList fluidPage fluidRow column selectInput
+#' @importFrom shiny dateRangeInput actionButton verbatimTextOutput
 #' @importFrom plotly plotlyOutput
 #' @importFrom shinybusy add_busy_bar
 mod_raw_ui <- function(id){
@@ -79,6 +80,7 @@ mod_raw_ui <- function(id){
 #' raw Server Functions
 #'
 #' @noRd
+#' @importFrom shiny moduleServer renderPrint observeEvent reactiveValues updateSelectInput
 mod_raw_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns

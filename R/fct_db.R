@@ -15,8 +15,29 @@ db_con <- function(){
   return(db_con)
 }
 
+#' Insert station into database
+#'
+#' @param db_con PqConnection: database connection
+#' @param station list: list of station information (id, name, lat, lon)
+#'
+#' @importFrom DBI dbExecute sqlInterpolate
+#' @importFrom glue glue
+#'
+#' @return list
+#' @export
 db_insert_station <- function(db_con, station){
-  DBI::dbExecute(db_con, "INSERT INTO stations (id, name, lat, lon, alt) VALUES (?, ?, ?, ?, ?)", station)
+  field_placeholders <- paste(names(station), collapse = ", ")
+  value_placeholders <- paste(rep("?",length(station)), collapse = ", ")
+  sql <- sprintf("INSERT INTO stations (%s) VALUES (%s)", field_placeholders, value_placeholders)
+  message <- tryCatch({
+    query <- do.call(sqlInterpolate, c(list(db_con, sql), unname(station)))
+    # Execute the query
+    dbExecute(db_con, query)
+
+    return(list(success = TRUE, message = glue::glue("Station {station$name} inserted successfully!")))
+  }, error = function(e) {
+    return(list(success = FALSE, message = paste("Database error:", e$message)))
+  })
 }
 
 #' Insert data into a table
@@ -309,7 +330,8 @@ db_min_max_date <- function(con){
 #' @return data.frame
 #' @export
 db_get_measurement <- function(con, sensor_id, min_date, max_date){
-  sql <- "SELECT ts, value, value_corr
+  sql <- "SELECT ts, value, value_corr,
+            CASE WHEN value_corr IS NULL THEN value ELSE value_corr END AS value_edit
     FROM measurement
     WHERE sensor_id = ?sensor_id AND ts >= ?min_date AND ts <= ?max_date
     ORDER BY ts;"

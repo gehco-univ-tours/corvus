@@ -41,12 +41,21 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
     )
   }
 
+  edit_xts <- NULL
+  if (!is.null(data$measurement_edit[["value_edit"]])) {
+    edit_xts <- xts::xts(
+      data$measurement_edit[["value_edit"]],
+      order.by = data$measurement_edit$ts
+    )
+  }
+
   # merge series
   series_list <- list()
 
   if (display_opts$measurement_tocorr_raw) series_list$raw <- raw_xts
   if (display_opts$measurement_tocorr_corr) series_list$corr <- corr_xts
-  if (display_opts$measurement_additional && !is.null(add_xts)) series_list$add <- add_xts
+  if (display_opts$measurement_add && !is.null(add_xts)) series_list$add <- add_xts
+  if (display_opts$measurement_edit && !is.null(edit_xts)) series_list$edit <- edit_xts
 
   # merge intelligent
   all_series <- do.call(merge, series_list)
@@ -70,15 +79,22 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
   if ("raw" %in% colnames(all_series)) {
     dy <- dy %>%
       dygraphs::dySeries("raw",
-                         label = "Raw",
+                         label = paste0(parameter_tocorr_name, " raw"),
                          color = "black")
   }
 
   if ("corr" %in% colnames(all_series)) {
     dy <- dy %>%
       dygraphs::dySeries("corr",
-                         label = parameter_tocorr_name,
+                         label = paste0(parameter_tocorr_name, " corrected"),
                          color = "green")
+  }
+
+  if ("edit" %in% colnames(all_series)) {
+    dy <- dy %>%
+      dygraphs::dySeries("edit",
+                        label =paste0(parameter_tocorr_name, " edited"),
+                        color = "orange")
   }
 
   # second y axis if additional parameter is displayed
@@ -88,153 +104,6 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
   }
 
   return(dy)
-}
-
-#' plot_main
-#' @param date_min minimum date xaxis
-#' @param date_max maximum date xaxis
-#'
-#' @importFrom plotly plot_ly layout add_trace
-#'
-#' @return plotly graph.
-#' @export
-plot_main <- function(data, y, y_title, date_min, date_max){
-  plot <- plot_ly() %>%
-    add_trace(x = data[["ts"]],
-              y = data[[y]],
-              type = 'scatter',
-              mode = 'lines',
-              name = "raw",
-              line = list(color = 'black')
-  ) %>%
-    layout(
-      xaxis = list(
-        title = "Date time (UTC)",
-        range = c(date_min, date_max)
-        # rangeslider = list(type = "date")
-      ),
-      yaxis = list(
-        title = y_title
-      ),
-      hovermode = "x unified"
-    )
-  return(plot)
-}
-
-#' Update plotly graph.
-#'
-#' @param data dataframe sensors dataset.
-#' @param y text parameter selected.
-#' @param y_title text parameter selected name.
-#' @param date_min minimum date xaxis
-#' @param date_max maximum date xaxis
-#'
-#' @return list with proxy trace and layout.
-#' @export
-plot_update_main <- function(data, y, y_title, date_min, date_max){
-
-  proxy_trace <- list(
-    x = data[["ts"]],
-    y = data[[y]],
-    type = 'scatter',
-    mode = 'lines',
-    name = "raw",
-    line = list(color = 'black')
-  )
-
-  proxy_layout <- list(
-    xaxis = list(
-      range = c(date_min, date_max)
-      # rangeslider = list(type = "date")
-    ),
-    yaxis = list(
-      title = y_title
-    )
-  )
-  proxy <- list("trace" = proxy_trace,
-                "layout" = proxy_layout)
-  return(proxy)
-}
-
-#' plotly add data trace.
-#'
-#' @param data data frame containing the selected axis data.
-#' @param y text metric to be plotted on the y-axis.
-#' @param y_label text name of the metric plotted.
-#'
-#' @return list
-#' @export
-plot_add_trace <- function(data, y, y_label){
-  trace <- list(
-    x = data[["ts"]],
-    y = data[[y]],
-    type = 'scatter',
-    mode = 'lines',
-    name = "corr",
-    line = list(color = 'lightblue')
-  )
-  return(trace)
-}
-
-#' Create a vertical dashed line annotation for longitudinal profile plots
-#'
-#' This function generates a vertical dashed line annotation for longitudinal profile
-#' plots using the 'plotly' package.
-#'
-#' @param x The x-coordinate where the vertical line should be positioned.
-#' @param color The color of the vertical dashed line (default is "green").
-#'
-#' @return A list object representing a vertical dashed line annotation.
-#'
-#' @export
-plot_vertical_line <- function(x = 0, color = "green") {
-  list(
-    type = "line",
-    y0 = 0,
-    y1 = 1,
-    xref = "x",
-    yref = "paper",
-    x0 = x,
-    x1 = x,
-    line = list(color = color, width = 2, dash="dash")
-  )
-}
-
-#' Create a list of vertical dashed line annotations for longitudinal profile plots
-#'
-#' @param data dataframe containing the x-coordinates of the vertical lines.
-#' @param color text color of the vertical dashed lines (default is "green").
-#'
-#' @return A list object containing the vertical dashed line annotations.
-#'
-#' @export
-plot_lines <- function(data, color="green"){
-  shapes_list <- list (
-    shapes = lapply(data, function(x) {
-      plot_vertical_line(x = x, color = color)
-    })
-  )
-  return (shapes_list)
-}
-
-#' plotly add edit trace.
-#'
-#' @param data data frame containing the selected axis data.
-#' @param y text metric to be plotted on the y-axis.
-#' @param y_label text name of the metric plotted.
-#'
-#' @return list
-#' @export
-plot_add_edit_trace <- function(data, y, y_label){
-  trace <- list(
-    x = data[["ts"]],
-    y = data[[y]],
-    type = 'scatter',
-    mode = 'lines',
-    name = "edit",
-    line = list(color = 'orange')
-  )
-  return(trace)
 }
 
 #' plotly add missing periods.

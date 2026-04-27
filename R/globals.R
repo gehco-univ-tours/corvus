@@ -1,6 +1,14 @@
 globalVariables(unique(c(
+  # db_get_validated_period_data:
+  "ts_end", "ts_start",
+  # db_min_max_date:
+  "sensor_id",
+  # compile_gb:
+  ".data", "Date", "Time", "ts",
   # compile_raw:
-  ".data", "ts", "data", "time", "Date", "Time",
-  # mod_raw_data_server : <anonymous>:
-  "ts", "value_corr"
+  ".data", "data", "time", "ts",
+  # db_get_fieldwork_data:
+  "ts",
+  # db_get_measurement:
+  "ts"
 )))

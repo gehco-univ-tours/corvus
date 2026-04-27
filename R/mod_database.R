@@ -6,7 +6,9 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
+#' @importFrom shiny NS tagList fluidPage fluidRow column selectInput
+#' @importFrom shiny actionButton uiOutput verbatimTextOutput
+#' @importFrom shinybusy add_busy_bar
 mod_database_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -53,6 +55,8 @@ mod_database_ui <- function(id){
 #' database Server Functions
 #'
 #' @noRd
+#' @importFrom shiny moduleServer renderPrint observeEvent reactiveValues
+#' @importFrom shiny renderUI req textInput selectInput
 #' @importFrom stringr str_remove
 mod_database_server <- function(id){
   moduleServer( id, function(input, output, session){
