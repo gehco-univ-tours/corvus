@@ -107,8 +107,7 @@ mod_edit_ui <- function(id){
         ),
         column(
           width = 3,
-          uiOutput(ns("value_offset_ui")),
-          uiOutput(ns("value_drift_ui")),
+          uiOutput(ns("value_edit_ui")),
           uiOutput(ns("plot_edit_ui")),
           tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_edit_ui"))
@@ -152,7 +151,7 @@ mod_edit_ui <- function(id){
 #' @importFrom shiny updateCheckboxInput
 #' @importFrom dygraphs renderDygraph dyEvent dyShading
 #' @importFrom shinyjs disable enable hide show
-#' @importFrom dplyr mutate
+#' @importFrom dplyr mutate filter
 #' @importFrom lubridate hm ymd ymd_hm
 #' @importFrom DT datatable renderDataTable
 mod_edit_server <- function(id, r_globals){
@@ -202,6 +201,7 @@ mod_edit_server <- function(id, r_globals){
         measurement_add = FALSE,
         measurement_edit = FALSE,
         fieldwork = FALSE,
+        deleted_period = FALSE,
         validated_period = FALSE
       ),
       update_plot = 0,
@@ -541,10 +541,13 @@ mod_edit_server <- function(id, r_globals){
         output$correction_ui <- renderUI({
           NULL
         })
-        output$select_datestart_ui <- renderUI({
+        output$set_start_date_ui <- renderUI({
           NULL
         })
-        output$select_dateend_ui <- renderUI({
+        output$set_end_date_ui <- renderUI({
+          NULL
+        })
+        output$reset_start_end_date_ui <- renderUI({
           NULL
         })
         output$value_edit_ui <- renderUI({
@@ -590,30 +593,25 @@ mod_edit_server <- function(id, r_globals){
 
       if (input$correction == 1) { # offset
 
-        output$value_offset_ui <- renderUI({
+        output$value_edit_ui <- renderUI({
           numericInput(inputId = ns("offset_edit"),
                        label = "Offset value",
                        value = 0)
         })
-        output$value_drift_ui <- renderUI({
-          NULL
-        })
       } else if (input$correction == 2){ # drift
-        output$value_drift_ui <- renderUI({
+        output$value_edit_ui <- renderUI({
           numericInput(inputId = ns("drift_edit"),
                        label = "Drift end value",
                        value = 0)
         })
-        output$value_offset_ui <- renderUI({
-          NULL
+      } else if (input$correction == 3){ # delete
+        output$value_edit_ui <- renderUI({
+            numericInput(inputId = ns("delete_threshold"),
+                         label = "Delete above this value",
+                         value = 0)
         })
       } else {
-        output$value_offset_ui <- renderUI({
-          NULL
-        })
-        output$value_drift_ui <- renderUI({
-          NULL
-        })
+        output$value_edit_ui <- NULL
       }
     })
 
@@ -626,22 +624,21 @@ mod_edit_server <- function(id, r_globals){
       r_locals$data$measurement_edit <- r_locals$data$measurement_tocorr %>%
         dplyr::filter(ts >= r_locals$start_date & ts <= r_locals$end_date)
 
-
-
       # apply correction
       if (input$correction == 1) { # offset
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
           dplyr::mutate(value_edit = value_edit + input$offset_edit)
       }
+      else if (input$correction == 2){ # drift
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value_edit = data_edit_drift(ts, value_edit, input$drift_edit))
+      }
+      else if (input$correction == 3){
+        r_locals$data_measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value_edit = NA)
+      }
 
-      # updateCheckboxInput(session, ns("checkbox_measurement_edit"), value = TRUE)
-
-      # else if (input$correction == 2){ # drift
-      #   data_to_correct <- data_to_correct %>%
-      #     dplyr::mutate(edit = data_edit_drift(timestamp, value_corr, input$drift_edit),
-      #                   value_corr = value_corr + edit)
-      # }
-
+      # plot
       if(!isTRUE(input$checkbox_measurement_edit)){
         updateCheckboxInput(session, "checkbox_measurement_edit", value = TRUE)
       } else {
@@ -650,7 +647,7 @@ mod_edit_server <- function(id, r_globals){
 
       shinyjs::enable("validate_edit")
 
-      print("Plot change")
+      print("Plot edit")
     })
 
     #### Validate change ####
