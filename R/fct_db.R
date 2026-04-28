@@ -330,7 +330,7 @@ db_min_max_date <- function(con){
 #' @return data.frame
 #' @export
 db_get_measurement <- function(con, sensor_id, min_date, max_date){
-  sql <- "SELECT ts, value, value_corr,
+  sql <- "SELECT ts, sensor_id, value, value_corr,
             CASE WHEN value_corr IS NULL THEN value ELSE value_corr END AS value_edit
     FROM measurement
     WHERE sensor_id = ?sensor_id AND ts >= ?min_date AND ts <= ?max_date
@@ -372,6 +372,21 @@ db_get_fieldwork_data <- function(con, station_id, start_date, end_date){
   return(data)
 }
 
+#' Validated period data
+#'
+#' This function returns the validated period data based on the sensor id and the date range.
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate with_tz
+#'
+#' @return data.frame
+#' @export
 db_get_validated_period_data <- function(con, sensor_id, start_date, end_date){
   sql <- "SELECT *
     FROM validated_period
@@ -386,4 +401,130 @@ db_get_validated_period_data <- function(con, sensor_id, start_date, end_date){
   dbDisconnect(con)
   return(data)
 }
+
+#' Deleted period data
+#'
+#' This function returns the deleted period data based on the sensor id and the date range.
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#'
+#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate with_tz
+#'
+#' @return data.frame
+#' @export
+db_get_deleted_period_data <- function(con, sensor_id, start_date, end_date){
+  sql <- "SELECT *
+    FROM correction
+    WHERE sensor_id = ?sensor_id AND ts_start >= ?start_date AND ts_end <= ?end_date
+    AND correction_type = 3
+    ORDER BY ts_start;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date)
+  data <- dbGetQuery(con, query) %>%
+    mutate(ts_start = as.POSIXct(ts_start, tz = 'UTC')) %>%
+    mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC')) %>%
+    mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
+    mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
+  dbDisconnect(con)
+  return(data)
+}
+
+#' Insert correction periods into correction table
+#'
+#' @param con DBIConnection
+#' @param dataframe data.frame
+#'
+#' @importFrom DBI dbWriteTable dbExecute dbBegin dbCommit dbRollback
+#' @importFrom glue glue
+#'
+#' @return integer Number of rows inserted
+#' @export
+db_update_correction <- function(con, dataframe) {
+
+  stopifnot(
+    is.data.frame(dataframe),
+    all(c("sensor_id", "author_id", "ts_start", "ts_end", "correction_type",
+      "value", "comment"
+    ) %in% names(dataframe))
+  )
+
+  DBI::dbBegin(con)
+  tryCatch({
+
+    DBI::dbWriteTable( con, name = "temp_correction", value = dataframe,
+      temporary = TRUE, row.names = FALSE
+    )
+
+    sql <- glue::glue("
+      INSERT INTO correction (sensor_id, author_id, ts_start, ts_end,
+        correction_type, value, comment
+      )
+      SELECT
+        sensor_id, author_id, ts_start, ts_end, correction_type, value, comment
+      FROM temp_correction
+    ")
+
+    rows <- DBI::dbExecute(con, sql)
+    DBI::dbExecute(con, "DROP TABLE temp_correction")
+    DBI::dbCommit(con)
+
+    return(paste0(rows, " inserted"))
+
+  }, error = function(e) {
+
+    DBI::dbRollback(con)
+    stop(e)
+
+  })
+}
+
+#' Update measurement table with edited values
+#'
+#' @param con DBIConnection
+#' @param dataframe data.frame with columns ts, sensor_id, value, value_corr and value_edit
+#'
+#' @importFrom DBI dbWriteTable dbExecute dbBegin dbCommit dbRollback
+#' @importFrom glue glue
+#'
+#' @return integer Number of rows updated
+#' @export
+db_update_measurement_edit <- function(con, dataframe){
+
+  stopifnot(
+    is.data.frame(dataframe),
+    all(c("ts", "sensor_id", "value", "value_corr", "value_edit") %in% names(dataframe)),
+    length(unique(dataframe$sensor_id)) == 1
+  )
+
+  DBI::dbBegin(con)
+
+  tryCatch({
+    DBI::dbWriteTable(con, name = "temp_measurement", value = dataframe,
+                       temporary = TRUE, row.names = FALSE
+    )
+    sql <- glue::glue("
+      UPDATE measurement
+      SET value_corr = temp_measurement.value_edit
+      FROM temp_measurement
+      WHERE measurement.sensor_id = temp_measurement.sensor_id
+      AND measurement.ts = temp_measurement.ts;
+      ")
+    rows <- DBI::dbExecute(con, sql)
+    DBI::dbExecute(con, "DROP TABLE temp_measurement")
+    DBI::dbCommit(con)
+
+    return(paste0(rows, " updated"))
+
+  }, error = function(e) {
+
+    DBI::dbRollback(con)
+    stop(e)
+  })
+}
+
+
 

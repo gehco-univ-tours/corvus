@@ -36,7 +36,7 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
   add_xts <- NULL
   if (!is.null(data$measurement_add)) {
     add_xts <- xts::xts(
-      data$measurement_add[["value"]],
+      data$measurement_add[["value_edit"]],
       order.by = data$measurement_add$ts
     )
   }

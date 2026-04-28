@@ -44,6 +44,54 @@ data_edit_drift <- function(timestamp, value_corr, drift_value) {
   return(drift_edit)
 }
 
+#' Format deleted period from deleted threshold
+#'
+#' @param dataframe data.frame: data frame with ts, value, value_corr and value_edit columns
+#' @param sensor_id integer: sensor id
+#' @param delete_threshold numeric: threshold value to consider a value as deleted
+#' @param author_id integer: author id
+#' @param correction_type integer: correction type id
+#' @param comment character: comment
+#'
+#' @importFrom dplyr arrange mutate lag filter group_by summarise transmute first
+#'
+#' @return data.frame
+#' @export
+data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
+                                     author_id, correction_type, comment){
+
+
+  stopifnot(
+    is.data.frame(dataframe),
+    all(c("ts", "value_edit") %in% names(dataframe))
+  )
+
+  data <- dataframe %>%
+    arrange(ts) %>%
+    mutate(
+      flag_delete = value_edit > delete_threshold,
+      new_period = flag_delete != lag(flag_delete, default = first(flag_delete)),
+      period_id = cumsum(new_period)
+    ) %>%
+    filter(flag_delete) %>%
+    group_by(period_id) %>%
+    summarise(
+      ts_start = min(ts),
+      ts_end   = max(ts),
+      .groups  = "drop"
+    ) %>%
+    transmute(
+      sensor_id = sensor_id,
+      author_id = author_id,
+      ts_start,
+      ts_end,
+      correction_type = correction_type,
+      value = delete_threshold,
+      comment = comment
+    )
+  return(data)
+}
+
 #' Update measurement data into database
 #'
 #' @param con PqConnection: database connection

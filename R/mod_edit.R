@@ -27,7 +27,8 @@ mod_edit_ui <- function(id){
           uiOutput(ns("checkbox_measurement_edit_ui")),
           uiOutput(ns("checkbox_measurement_add_ui")),
           uiOutput(ns("checkbox_fieldwork_ui")),
-          uiOutput(ns("checkbox_validated_period_ui"))
+          uiOutput(ns("checkbox_validated_period_ui")),
+          uiOutput(ns("checkbox_deleted_period_ui"))
         ),
         column(
           width = 10,
@@ -151,7 +152,7 @@ mod_edit_ui <- function(id){
 #' @importFrom shiny updateCheckboxInput
 #' @importFrom dygraphs renderDygraph dyEvent dyShading
 #' @importFrom shinyjs disable enable hide show
-#' @importFrom dplyr mutate filter
+#' @importFrom dplyr mutate filter arrange group_by summarise transmute
 #' @importFrom lubridate hm ymd ymd_hm
 #' @importFrom DT datatable renderDataTable
 mod_edit_server <- function(id, r_globals){
@@ -193,7 +194,8 @@ mod_edit_server <- function(id, r_globals){
         measurement_edit = NULL,
         measurement_add = NULL,
         fieldwork = NULL,
-        validated = NULL
+        validated = NULL,
+        deleted = NULL
       ),
       checkbox_graph = list(
         measurement_tocorr_raw = TRUE,
@@ -302,6 +304,7 @@ mod_edit_server <- function(id, r_globals){
       r_locals$data$measurement_add <- db_get_measurement(db_con(), r_locals$sensor_id_add, input$date[1], input$date[2])
       r_locals$data$fieldwork <- db_get_fieldwork_data(db_con(), input$station, input$date[1], input$date[2])
       r_locals$data$validated <- db_get_validated_period_data(db_con(), r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$deleted <- db_get_deleted_period_data(db_con(), r_locals$sensor_id_tocorr, input$date[1], input$date[2])
 
       # update checkbox UI
       output$checkbox_measurement_tocorr_raw_ui <- renderUI({
@@ -332,6 +335,11 @@ mod_edit_server <- function(id, r_globals){
       output$checkbox_validated_period_ui <- renderUI({
         checkboxInput(inputId = ns("checkbox_validated_period"),
                       label = "Validated period",
+                      value = FALSE)
+      })
+      output$checkbox_validated_period_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_deleted_period"),
+                      label = "Deleted period",
                       value = FALSE)
       })
 
@@ -368,13 +376,15 @@ mod_edit_server <- function(id, r_globals){
     })
 
 
-    #### Validated period and fieldwork ####
+    #### Validated period, deleted period and fieldwork ####
 
     observeEvent(list(input$checkbox_validated_period,
-                      input$checkbox_fieldwork), ignoreInit = TRUE, {
+                      input$checkbox_fieldwork,
+                      input$checkbox_deleted_period), ignoreInit = TRUE, {
 
       r_locals$checkbox_graph$validated_period <- input$checkbox_validated_period
       r_locals$checkbox_graph$fieldwork <- input$checkbox_fieldwork
+      r_locals$checkbox_graph$deleted_period <- input$checkbox_deleted_period
 
       if(r_locals$checkbox_graph$fieldwork){
         r_locals$fieldwork_table <- DT::datatable(
@@ -384,7 +394,7 @@ mod_edit_server <- function(id, r_globals){
         r_locals$fieldwork_table <- NULL
       }
 
-      print("Validated period or fieldwork")
+      print("Validated, deleted period or fieldworks")
     })
 
     #### Update plot ####
@@ -429,7 +439,7 @@ mod_edit_server <- function(id, r_globals){
       }
 
       # validated periods (green zone)
-      if (r_locals$checkbox_graph$validated_period && !is.null(r_locals$data$validated)) {
+      if (isTRUE(r_locals$checkbox_graph$validated_period) && !is.null(r_locals$data$validated)) {
         for (i in seq_len(nrow(r_locals$data$validated))) {
           plot <- plot %>%
             dygraphs::dyShading(
@@ -440,8 +450,20 @@ mod_edit_server <- function(id, r_globals){
         }
       }
 
+      # deleted periods (red zone)
+      if (isTRUE(r_locals$checkbox_graph$deleted_period) && !is.null(r_locals$data$deleted)) {
+        for (i in seq_len(nrow(r_locals$data$deleted))) {
+          plot <- plot %>%
+            dygraphs::dyShading(
+              from = r_locals$data$deleted$ts_start[i],
+              to   = r_locals$data$deleted$ts_end[i],
+              color = "rgba(255,0,0,0.1)"
+            )
+        }
+      }
+
       # fieldwork (orange vertical lines)
-      if (r_locals$checkbox_graph$fieldwork && !is.null(r_locals$data$fieldwork)) {
+      if (isTRUE(r_locals$checkbox_graph$fieldwork) && !is.null(r_locals$data$fieldwork)) {
         for (i in seq_len(nrow(r_locals$data$fieldwork))) {
           plot <- plot %>%
             dygraphs::dyEvent(
@@ -615,7 +637,7 @@ mod_edit_server <- function(id, r_globals){
       }
     })
 
-    #### Plot change ####
+    #### Plot edit ####
 
     observeEvent(input$plot_edit, {
       req(r_locals$start_date, r_locals$end_date)
@@ -629,13 +651,13 @@ mod_edit_server <- function(id, r_globals){
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
           dplyr::mutate(value_edit = value_edit + input$offset_edit)
       }
-      else if (input$correction == 2){ # drift
+      if (input$correction == 2){ # drift
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
           dplyr::mutate(value_edit = data_edit_drift(ts, value_edit, input$drift_edit))
       }
-      else if (input$correction == 3){
-        r_locals$data_measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value_edit = NA)
+      if (input$correction == 3){
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::filter(value_edit <= input$delete_threshold)
       }
 
       # plot
@@ -651,6 +673,38 @@ mod_edit_server <- function(id, r_globals){
     })
 
     #### Validate change ####
+
+    observeEvent(input$validate_edit, {
+
+      r_locals$data$measurement_edit <- r_locals$data$measurement_tocorr %>%
+        dplyr::filter(ts >= r_locals$start_date & ts <= r_locals$end_date)
+
+      if (input$correction == 1) { # offset
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value_edit = value_edit + input$offset_edit)
+
+        r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = db_con(),
+                                                                       dataframe = r_locals$data$measurement_edit)
+      }
+
+      if (input$correction == 3){ # deleted
+        r_locals$data$deleted <- data_get_deleted_periods(
+          dataframe = r_locals$data$measurement_edit,
+          sensor_id = r_locals$sensor_id_tocorr,
+          delete_threshold = as.numeric(input$delete_threshold),
+          author_id = as.integer(input$author),
+          correction_type = as.integer(input$correction),
+          comment = input$comment)
+
+        r_locals$userinfo$db_corrections <- db_update_correction(con = db_con(),
+                                                                 dataframe = r_locals$data$deleted)
+      }
+
+      print("Validated")
+
+    })
+
+
 
     # change data$measurement_tocorr[["edit"]] with new value to change graph
   })
