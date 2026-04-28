@@ -224,62 +224,6 @@ data_prepare_edit_and_correction <- function(
   )
 }
 
-#' Update measurement data into database
-#'
-#' @param con PqConnection: database connection
-#' @param data data.frame: data frame with timestamp, value_corr and edit columns
-#' @param sensor integer: sensor id
-#' @param correction_type character: correction type id
-#' @param value numeric: offset value
-#' @param author integer: author id
-#' @param comment character: comment
-#'
-#' @importFrom glue glue
-#' @importFrom DBI dbSendQuery dbGetRowsAffected dbWriteTable dbExecute
-#'
-#' @return character
-#' @export
-data_update_measurement <- function(con, data, sensor, author, correction_type, value, comment){
-
-  # get first and last date
-  date_time_start <- min(data$timestamp)
-  date_time_end <- max(data$timestamp)
-
-  # Correction table
-  sql_statement_correction <- glue::glue("INSERT INTO correction(sensor_id, author_id, timestamp_start, timestamp_end,
-                                          correction_type, value, comment)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7);")
-  # Execute the SQL statement
-  result_correction <- dbSendQuery(con, sql_statement_correction,
-                        params = list(sensor, author, date_time_start, date_time_end, correction_type, value, comment))
-  # Get the number of rows affected by the query
-  rows_affected_correction <- dbGetRowsAffected(result_correction)
-  ##
-  # Upload the data frame to a temporary table in PostgreSQL
-  dbWriteTable(con, "temp_update", data, temporary = TRUE, row.names = FALSE)
-
-  # Perform a single update command using a join
-  sql_statement_measurement <- glue::glue("
-    UPDATE measurement
-    SET value_corr = temp_update.edit
-    FROM temp_update
-    WHERE measurement.sensor_id = $1
-      AND measurement.timestamp = temp_update.timestamp")
-
-  # Execute the SQL statement
-  result_measurement <- dbSendQuery(con, sql_statement_measurement,
-            params = list(sensor))
-
-  # Get the number of rows affected by the query
-  rows_affected_correction <- dbGetRowsAffected(result_measurement)
-
-  # Drop the temporary table
-  dbExecute(con, "DROP TABLE temp_update")
-
-  return(glue::glue("measurement table updated for {sensor} sensor id with {rows_affected_correction} rows inserted and
-                    {rows_affected_correction} rows inserted in the correction table."))
-}
-
 #' Get measurement missing period by interval
 #'
 #' @param con PqConnection: database connection
