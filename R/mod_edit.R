@@ -196,6 +196,7 @@ mod_edit_server <- function(id, con, r_globals){
         measurement_edit = FALSE,
         fieldwork = FALSE,
         deleted_period = FALSE,
+        correction_period = FALSE,
         validated_period = FALSE
       ),
       update_plot = 0,
@@ -497,12 +498,19 @@ mod_edit_server <- function(id, con, r_globals){
     observeEvent(input$plot_click, {
       req(r_locals$start_or_end)
 
+      click_time <- as.POSIXct(
+          input$plot_click$x,
+          format = "%Y-%m-%dT%H:%M:%OSZ",
+          tz = "UTC"
+        )
+
+
       if (r_locals$start_or_end == "start") {
-        r_locals$start_date <- input$plot_click$x
+        r_locals$start_date <- click_time
       }
 
       if (r_locals$start_or_end == "end") {
-        r_locals$end_date <- input$plot_click$x
+        r_locals$end_date <- click_time
       }
 
       r_locals$start_or_end <- NULL
@@ -699,18 +707,38 @@ mod_edit_server <- function(id, con, r_globals){
 
         r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = con,
                                                                        dataframe = r_locals$data$measurement_edit)
-      }
+        r_locals$data$correction_period <- data_get_correction_period(
+          dataframe = r_locals$data$measurement_edit,
+          sensor_id = r_locals$sensor_id_tocorr,
+          value = as.numeric(input$offset_edit),
+          author_id = as.integer(input$author),
+          correction_type = as.integer(input$correction),
+          comment = input$comment)
 
+        r_locals$userinfo$db_correction <- db_update_correction(con = con,
+                                                                dataframe = r_locals$data$correction_period)
+
+      }
       if (input$correction == 2){ # drift
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
           dplyr::mutate(value_edit = data_edit_drift(ts, value_edit, input$drift_edit))
 
         r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = con,
                                                                        dataframe = r_locals$data$measurement_edit)
-      }
 
+        r_locals$data$correction_period <- data_get_correction_period(
+          dataframe = r_locals$data$measurement_edit,
+          sensor_id = r_locals$sensor_id_tocorr,
+          value = as.numeric(input$drift_edit),
+          author_id = as.integer(input$author),
+          correction_type = as.integer(input$correction),
+          comment = input$comment)
+
+        r_locals$userinfo$db_correction <- db_update_correction(con = con,
+                                                                dataframe = r_locals$data$correction_period)
+      }
       if (input$correction == 3){ # deleted
-        r_locals$data$deleted <- data_get_deleted_periods(
+        r_locals$data$correction_period <- data_get_deleted_periods(
           dataframe = r_locals$data$measurement_edit,
           sensor_id = r_locals$sensor_id_tocorr,
           delete_threshold = as.numeric(input$delete_threshold),
@@ -719,15 +747,11 @@ mod_edit_server <- function(id, con, r_globals){
           comment = input$comment)
 
         r_locals$userinfo$db_corrections <- db_update_correction(con = con,
-                                                                 dataframe = r_locals$data$deleted)
+                                                                 dataframe = r_locals$data$correction_period)
       }
 
       print("Validated")
 
     })
-
-
-
-    # change data$measurement_tocorr[["edit"]] with new value to change graph
   })
 }

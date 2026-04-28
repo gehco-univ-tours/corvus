@@ -92,6 +92,43 @@ data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
   return(data)
 }
 
+#' Format correction period from edited values
+#'
+#' @param dataframe data.frame: data frame with ts, value, value_corr and value_edit columns
+#' @param sensor_id integer: sensor id
+#' @param value numeric: offset value to consider a value as corrected
+#' @param author_id integer: author id
+#' @param correction_type integer: correction type id
+#' @param comment character: comment
+#'
+#' @importFrom dplyr summarise transmute
+#'
+#' @return data.frame
+data_get_correction_period <- function(dataframe, sensor_id, value,
+                                       author_id, correction_type, comment){
+
+  stopifnot(
+    is.data.frame(dataframe),
+    all(c("ts") %in% names(dataframe))
+  )
+
+  data <- dataframe %>%
+    summarise(
+      ts_start = min(ts),
+      ts_end = max(ts)
+    ) %>%
+    transmute(
+      sensor_id = sensor_id,
+      author_id = author_id,
+      ts_start,
+      ts_end,
+      correction_type = correction_type,
+      value = value,
+      comment = comment
+    )
+  return(data)
+}
+
 #' Update measurement data into database
 #'
 #' @param con PqConnection: database connection
