@@ -708,74 +708,25 @@ mod_edit_server <- function(id, con, r_globals){
 
     observeEvent(input$validate_edit, {
 
-      r_locals$data$measurement_edit <- r_locals$data$measurement_tocorr %>%
-        dplyr::filter(ts >= r_locals$start_date & ts <= r_locals$end_date)
+      prepared <- data_prepare_edit_and_correction(
+        measurement_tocorr = r_locals$data$measurement_tocorr,
+        correction_type = as.integer(input$correction),
+        sensor_id = r_locals$sensor_id_tocorr,
+        start_date = r_locals$start_date,
+        end_date = r_locals$end_date,
+        author_id = as.integer(input$author),
+        comment = input$comment,
+        offset = input$offset_edit,
+        drift = input$drift_edit,
+        delete_threshold = input$delete_threshold,
+        set_value = input$set_value
+      )
 
-      if (input$correction == 1) { # offset
-        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value_edit = value_edit + input$offset_edit)
-
-        r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = con,
-                                                                       dataframe = r_locals$data$measurement_edit)
-        r_locals$data$correction_period <- data_get_correction_period(
-          dataframe = r_locals$data$measurement_edit,
-          sensor_id = r_locals$sensor_id_tocorr,
-          value = as.numeric(input$offset_edit),
-          author_id = as.integer(input$author),
-          correction_type = as.integer(input$correction),
-          comment = input$comment)
-
-        r_locals$userinfo$db_correction <- db_update_correction(con = con,
-                                                                dataframe = r_locals$data$correction_period)
-
-      }
-      if (input$correction == 2){ # drift
-        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value_edit = data_edit_drift(ts, value_edit, input$drift_edit))
-
-        r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = con,
-                                                                       dataframe = r_locals$data$measurement_edit)
-
-        r_locals$data$correction_period <- data_get_correction_period(
-          dataframe = r_locals$data$measurement_edit,
-          sensor_id = r_locals$sensor_id_tocorr,
-          value = as.numeric(input$drift_edit),
-          author_id = as.integer(input$author),
-          correction_type = as.integer(input$correction),
-          comment = input$comment)
-
-        r_locals$userinfo$db_correction <- db_update_correction(con = con,
-                                                                dataframe = r_locals$data$correction_period)
-      }
-      if (input$correction == 3){ # deleted
-        r_locals$data$correction_period <- data_get_deleted_periods(
-          dataframe = r_locals$data$measurement_edit,
-          sensor_id = r_locals$sensor_id_tocorr,
-          delete_threshold = as.numeric(input$delete_threshold),
-          author_id = as.integer(input$author),
-          correction_type = as.integer(input$correction),
-          comment = input$comment)
-
-        r_locals$userinfo$db_corrections <- db_update_correction(con = con,
-                                                                 dataframe = r_locals$data$correction_period)
-      }
-      if (input$correction == 4) { # set value
-        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value_edit = input$set_value)
-
-        r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = con,
-                                                                       dataframe = r_locals$data$measurement_edit)
-        r_locals$data$correction_period <- data_get_correction_period(
-          dataframe = r_locals$data$measurement_edit,
-          sensor_id = r_locals$sensor_id_tocorr,
-          value = as.numeric(input$offset_edit),
-          author_id = as.integer(input$author),
-          correction_type = as.integer(input$correction),
-          comment = input$comment)
-
-        r_locals$userinfo$db_correction <- db_update_correction(con = con,
-                                                                dataframe = r_locals$data$correction_period)
-      }
+      r_locals$userinfo$db_result <- db_apply_edit_with_correction(
+        con = con,
+        measurement_edit = prepared$measurement_edit,
+        correction_period = prepared$correction_period
+      )
 
       print("Validated")
 

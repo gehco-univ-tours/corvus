@@ -129,6 +129,101 @@ data_get_correction_period <- function(dataframe, sensor_id, value,
   return(data)
 }
 
+#' Prepare edited measurement data and correction period for database update
+#'
+#' This function prepares the edited measurement data and the corresponding correction period based on the specified correction type. It filters the measurement data for the given date range and applies the appropriate correction (offset, drift, delete, or set value) to the `value_edit` column. It also generates a correction period data frame that can be used to update the database with the correction details.
+#'
+#' @param measurement_tocorr data.frame: data frame with ts, value, value_corr and value_edit columns
+#' @param correction_type integer: correction type id (1 for offset, 2 for drift, 3 for delete, 4 for set value)
+#' @param sensor_id integer: sensor id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#' @param author_id integer: author id
+#' @param comment character: comment
+#' @param offset numeric: offset value to apply for correction type 1 (offset)
+#' @param drift numeric: drift value to apply for correction type 2 (drift correction)
+#' @param delete_threshold numeric: threshold value to consider a value as deleted for correction type 3 (delete)
+#' @param set_value numeric: value to set for correction type 4 (set value correction)
+#' @importFrom dplyr filter mutate
+#'
+#' @return list with measurement_edit data frame and correction_period data frame
+#' @export
+data_prepare_edit_and_correction <- function(
+    measurement_tocorr,
+    correction_type,
+    sensor_id,
+    start_date,
+    end_date,
+    author_id,
+    comment,
+    offset = NULL,
+    drift = NULL,
+    delete_threshold = NULL,
+    set_value = NULL
+) {
+
+  measurement_edit <- measurement_tocorr %>%
+    dplyr::filter(ts >= start_date, ts <= end_date)
+
+  if (correction_type == 1) { # offset
+    measurement_edit <- measurement_edit %>%
+      mutate(value_edit = value_edit + offset)
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value = offset,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 2) { # drift
+    measurement_edit <- measurement_edit %>%
+      mutate(value_edit = data_edit_drift(ts, value_edit, drift))
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value = drift,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 3) { # delete
+    correction_period <- data_get_deleted_periods(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      delete_threshold = delete_threshold,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 4) { # set value
+    measurement_edit <- measurement_edit %>%
+      mutate(value_edit = set_value)
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value = set_value,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  list(
+    measurement_edit = measurement_edit,
+    correction_period = correction_period
+  )
+}
+
 #' Update measurement data into database
 #'
 #' @param con PqConnection: database connection

@@ -415,7 +415,7 @@ db_get_deleted_period_data <- function(con, sensor_id, start_date, end_date){
 #' @param con DBIConnection
 #' @param dataframe data.frame
 #'
-#' @importFrom DBI dbWriteTable dbExecute dbBegin dbCommit dbRollback
+#' @importFrom DBI dbWriteTable dbExecute
 #' @importFrom glue glue
 #'
 #' @return integer Number of rows inserted
@@ -429,7 +429,6 @@ db_update_correction <- function(con, dataframe) {
     ) %in% names(dataframe))
   )
 
-  DBI::dbBegin(con)
   tryCatch({
     DBI::dbWriteTable( con, name = "temp_correction", value = dataframe,
       temporary = TRUE, row.names = FALSE)
@@ -442,12 +441,10 @@ db_update_correction <- function(con, dataframe) {
       FROM temp_correction")
     rows <- DBI::dbExecute(con, sql)
     DBI::dbExecute(con, "DROP TABLE temp_correction")
-    DBI::dbCommit(con)
 
     return(paste0(rows, " inserted"))
 
   }, error = function(e) {
-    DBI::dbRollback(con)
     stop(e)
   })
 }
@@ -457,7 +454,7 @@ db_update_correction <- function(con, dataframe) {
 #' @param con DBIConnection
 #' @param dataframe data.frame with columns ts, sensor_id, value, value_corr and value_edit
 #'
-#' @importFrom DBI dbWriteTable dbExecute dbBegin dbCommit dbRollback
+#' @importFrom DBI dbWriteTable dbExecute
 #' @importFrom glue glue
 #'
 #' @return integer Number of rows updated
@@ -469,8 +466,6 @@ db_update_measurement_edit <- function(con, dataframe){
     all(c("ts", "sensor_id", "value", "value_corr", "value_edit") %in% names(dataframe)),
     length(unique(dataframe$sensor_id)) == 1
   )
-
-  DBI::dbBegin(con)
 
   tryCatch({
     DBI::dbWriteTable(con, name = "temp_measurement", value = dataframe,
@@ -485,14 +480,49 @@ db_update_measurement_edit <- function(con, dataframe){
       ")
     rows <- DBI::dbExecute(con, sql)
     DBI::dbExecute(con, "DROP TABLE temp_measurement")
-    DBI::dbCommit(con)
 
     return(paste0(rows, " updated"))
 
   }, error = function(e) {
 
+    stop(e)
+  })
+}
+
+#' Apply measurement edit and correction periods in a single transaction
+#'
+#' This function applies both measurement edits and correction periods in a single database transaction. If any part of the process fails, the entire transaction is rolled back to maintain data integrity.
+#'
+#' @param con DBIConnection
+#' @param measurement_edit data.frame with columns ts, sensor_id, value, value_corr and value_edit (can be NULL if no measurement edit)
+#' @param correction_period data.frame with columns sensor_id, author_id, ts_start, ts_end, correction_type, value, comment (can be NULL if no correction period)
+#'
+#' @importFrom DBI dbBegin dbCommit dbRollback
+#' @importFrom glue glue
+#'
+#' @return character Message indicating the result of the operation
+#' @export
+db_apply_edit_with_correction <- function(con, measurement_edit, correction_period) {
+
+  DBI::dbBegin(con)
+
+  tryCatch({
+
+    if (!is.null(measurement_edit)) {
+      db_update_measurement_edit(con, measurement_edit)
+    }
+
+    db_update_correction(con, correction_period)
+
+    DBI::dbCommit(con)
+
+    return("Measurement + correction committed")
+
+  }, error = function(e) {
+
     DBI::dbRollback(con)
     stop(e)
+
   })
 }
 
