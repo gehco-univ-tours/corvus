@@ -40,7 +40,7 @@ mod_edit_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = db_get_stations(db_con()))
+                      choices = NULL)
         ),
         column(
           width = 2,
@@ -64,15 +64,7 @@ mod_edit_ui <- function(id){
       fluidRow(
         column(
           width = 12,
-          sliderInput(ns("date"),
-                      "",
-                      min = db_min_max_date(db_con())$min,
-                      max = db_min_max_date(db_con())$max,
-                      value = c(db_min_max_date(db_con())$max - 180, db_min_max_date(db_con())$max),
-                      timeFormat="%Y-%m-%d",
-                      width = "100%",
-                      timezone = "UTC"
-          )
+          uiOutput(ns("date_ui"))
         )
       ),
       fluidRow(
@@ -155,7 +147,7 @@ mod_edit_ui <- function(id){
 #' @importFrom dplyr mutate filter arrange group_by summarise transmute
 #' @importFrom lubridate hm ymd ymd_hm
 #' @importFrom DT datatable renderDataTable
-mod_edit_server <- function(id, r_globals){
+mod_edit_server <- function(id, con, r_globals){
   moduleServer(id, function(input, output, session){
     ns <- session$ns
 
@@ -217,11 +209,25 @@ mod_edit_server <- function(id, r_globals){
 
     ### INIT ####
 
-    ### UI OUTPUT ####
+    #### UI output ####
 
-    #### plot ####
+    output$date_ui <- renderUI({
+      req(con)
 
-    #### userinfo ####
+      limits <- db_min_max_date(con)
+
+      sliderInput(
+        inputId = session$ns("date"),
+        label = "",
+        min = limits$min,
+        max = limits$max,
+        value = c(limits$max - 180, limits$max),
+        timeFormat = "%Y-%m-%d",
+        width = "100%",
+        timezone = "UTC"
+      )
+    })
+
     output$userinfo <- renderPrint({
       r_locals$userinfo
     })
@@ -231,13 +237,21 @@ mod_edit_server <- function(id, r_globals){
     #### UI ####
     # update input$station if r_globals$station is not NULL
 
+    observeEvent(r_globals$all_stations, {
+      updateSelectInput(
+        session,
+        inputId = "station",
+        choices = db_get_stations(con)
+      )
+    })
+
     #### Station ####
 
     observeEvent(input$station, {
       req(input$station)
       r_locals$station_code <- r_globals$all_stations$code[r_globals$all_stations$id == input$station]
       r_locals$station_name <- r_globals$all_stations$name[r_globals$all_stations$id == input$station]
-      r_locals$station_parameters <- db_get_station_parameters(db_con(), input$station)
+      r_locals$station_parameters <- db_get_station_parameters(con, input$station)
       updateSelectInput(session, "parameter_tocorr", choices = r_locals$station_parameters)
       updateSelectInput(session, "parameter_add", choices = r_locals$station_parameters)
       r_locals$parameter_tocorr <- r_locals$station_parameters[1]
@@ -265,9 +279,9 @@ mod_edit_server <- function(id, r_globals){
       req(input$parameter_tocorr)
       r_locals$parameter_tocorr <- input$parameter_tocorr
       r_locals$parameter_tocorr_name <-  names(which(r_locals$station_parameters == input$parameter_tocorr))
-      r_locals$parameter_tocorr_unit <- db_get_parameter_unit(db_con(), input$parameter_tocorr)
+      r_locals$parameter_tocorr_unit <- db_get_parameter_unit(con, input$parameter_tocorr)
 
-      r_locals$sensor_id_tocorr <- db_get_sensor_id(db_con(), input$station, input$parameter_tocorr)
+      r_locals$sensor_id_tocorr <- db_get_sensor_id(con, input$station, input$parameter_tocorr)
 
       # userinfo
       r_locals$userinfo$parameter_tocorr_name <- r_locals$parameter_tocorr_name
@@ -282,9 +296,9 @@ mod_edit_server <- function(id, r_globals){
       req(input$parameter_add)
       r_locals$parameter_add <- input$parameter_add
       r_locals$parameter_add_name <-  names(which(r_locals$station_parameters == input$parameter_add))
-      r_locals$parameter_add_unit <- db_get_parameter_unit(db_con(), input$parameter_add)
+      r_locals$parameter_add_unit <- db_get_parameter_unit(con, input$parameter_add)
 
-      r_locals$sensor_id_add <- db_get_sensor_id(db_con(), input$station, input$parameter_add)
+      r_locals$sensor_id_add <- db_get_sensor_id(con, input$station, input$parameter_add)
 
       # userinfo
       r_locals$userinfo$parameter_add_name <- r_locals$parameter_add_name
@@ -300,11 +314,11 @@ mod_edit_server <- function(id, r_globals){
       req(r_locals$sensor_id_add)
 
       # get data
-      r_locals$data$measurement_tocorr <- db_get_measurement(db_con(), r_locals$sensor_id_tocorr, input$date[1], input$date[2])
-      r_locals$data$measurement_add <- db_get_measurement(db_con(), r_locals$sensor_id_add, input$date[1], input$date[2])
-      r_locals$data$fieldwork <- db_get_fieldwork_data(db_con(), input$station, input$date[1], input$date[2])
-      r_locals$data$validated <- db_get_validated_period_data(db_con(), r_locals$sensor_id_tocorr, input$date[1], input$date[2])
-      r_locals$data$deleted <- db_get_deleted_period_data(db_con(), r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_tocorr <- db_get_measurement(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_add <- db_get_measurement(con, r_locals$sensor_id_add, input$date[1], input$date[2])
+      r_locals$data$fieldwork <- db_get_fieldwork_data(con, input$station, input$date[1], input$date[2])
+      r_locals$data$validated <- db_get_validated_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$deleted <- db_get_deleted_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
 
       # update checkbox UI
       output$checkbox_measurement_tocorr_raw_ui <- renderUI({
@@ -520,12 +534,12 @@ mod_edit_server <- function(id, r_globals){
         output$author_ui <- renderUI({
           selectInput(inputId = ns("author"),
                       label = "Author",
-                      choices = db_get_authors(db_con()))
+                      choices = db_get_authors(con))
         })
         output$correction_ui <- renderUI({
           selectInput(inputId = ns("correction"),
                       label = "Correction",
-                      choices = db_get_correction_type(db_con()))
+                      choices = db_get_correction_type(con))
         })
         output$set_start_date_ui <- renderUI({
           actionButton(inputId = ns("set_start_date"),
@@ -683,7 +697,15 @@ mod_edit_server <- function(id, r_globals){
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
           dplyr::mutate(value_edit = value_edit + input$offset_edit)
 
-        r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = db_con(),
+        r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = con,
+                                                                       dataframe = r_locals$data$measurement_edit)
+      }
+
+      if (input$correction == 2){ # drift
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value_edit = data_edit_drift(ts, value_edit, input$drift_edit))
+
+        r_locals$userinfo$db_measurement <- db_update_measurement_edit(con = con,
                                                                        dataframe = r_locals$data$measurement_edit)
       }
 
@@ -696,7 +718,7 @@ mod_edit_server <- function(id, r_globals){
           correction_type = as.integer(input$correction),
           comment = input$comment)
 
-        r_locals$userinfo$db_corrections <- db_update_correction(con = db_con(),
+        r_locals$userinfo$db_corrections <- db_update_correction(con = con,
                                                                  dataframe = r_locals$data$deleted)
       }
 

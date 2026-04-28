@@ -19,15 +19,15 @@ mod_raw_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = params_get_stations(db_con()),
+                      choices = params_get_stations(r_globals$con),
                       selected = 3)
         ),
         column(
           width = 2,
           dateRangeInput(inputId = ns("date"),
                          label = "Date",
-                         start =  get_min_max_date(db_con(), 3)$min_date,
-                         end =  get_min_max_date(db_con(), 3)$max_date
+                         start =  get_min_max_date(r_globals$con, 3)$min_date,
+                         end =  get_min_max_date(r_globals$con, 3)$max_date
           )
         ),
         column(
@@ -133,7 +133,7 @@ mod_raw_server <- function(id){
     observeEvent(input$station, {
       r_locals$userinfo$station <- glue::glue("Station ID: {input$station}")
       updateSelectInput(session, "parameter",
-                        choices = params_get_station_parameters(db_con(), input$station))
+                        choices = params_get_station_parameters(r_globals$con, input$station))
     })
 
     #### Plot bttn ####
@@ -144,9 +144,9 @@ mod_raw_server <- function(id){
     #### Compile bttn ####
     observeEvent(input$compile_raw_data, {
       if (input$station == 3){ # GB station
-        data <- compile_gb(con = db_con())
+        data <- compile_gb(con = r_globals$con)
       } else {
-        data <- compile_raw(con = db_con(),
+        data <- compile_raw(con = r_globals$con,
                             station = input$station,
                             parameter = input$parameter,
                             sensor = r_locals$sensor_id)

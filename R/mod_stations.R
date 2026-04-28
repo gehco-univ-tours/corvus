@@ -39,7 +39,7 @@ mod_stations_ui <- function(id){
 #' @importFrom shiny moduleServer renderPrint observeEvent reactiveValues
 #' @importFrom leaflet leaflet renderLeaflet addTiles addMarkers fitBounds
 #' @importFrom leaflet addScaleBar scaleBarOptions labelOptions
-mod_stations_server <- function(id, r_globals){
+mod_stations_server <- function(id, con, r_globals){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 

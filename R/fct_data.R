@@ -103,7 +103,7 @@ data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
 #' @param comment character: comment
 #'
 #' @importFrom glue glue
-#' @importFrom DBI dbSendQuery dbGetRowsAffected dbDisconnect dbWriteTable dbExecute
+#' @importFrom DBI dbSendQuery dbGetRowsAffected dbWriteTable dbExecute
 #'
 #' @return character
 #' @export
@@ -144,7 +144,6 @@ data_update_measurement <- function(con, data, sensor, author, correction_type, 
   # Drop the temporary table
   dbExecute(con, "DROP TABLE temp_update")
 
-  dbDisconnect(con)
   return(glue::glue("measurement table updated for {sensor} sensor id with {rows_affected_correction} rows inserted and
                     {rows_affected_correction} rows inserted in the correction table."))
 }
@@ -157,7 +156,7 @@ data_update_measurement <- function(con, data, sensor, author, correction_type, 
 #' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
 #' @param interval_time character: interval in format '1 day', '1 hour', '1 minute', '1 second'
 #'
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#' @importFrom DBI dbGetQuery sqlInterpolate dbQuoteIdentifier SQL
 #'
 #' @return data.frame
 #' @export
@@ -201,7 +200,6 @@ data_get_missing_period <- function(con, sensor_id, start_date, end_date, interv
             time_start;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
   data <- dbGetQuery(con, query)
-  dbDisconnect(con)
   return(data)
 }
 
@@ -213,7 +211,7 @@ data_get_missing_period <- function(con, sensor_id, start_date, end_date, interv
 #' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
 #' @param interval_time character: interval in format '1 day', '1 hour', '1 minute', '1 second'
 #'
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#' @importFrom DBI dbGetQuery sqlInterpolate dbQuoteIdentifier SQL
 #'
 #' @return data.frame
 #' @export
@@ -241,6 +239,5 @@ data_get_available_period <- function(con, sensor_id, start_date, end_date, inte
           	time_start;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
   data <- dbGetQuery(con, query)
-  dbDisconnect(con)
   return(data)
 }
