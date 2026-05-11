@@ -312,7 +312,8 @@ db_min_max_date <- function(con){
 #' @export
 db_get_measurement <- function(con, sensor_id, min_date, max_date){
   sql <- "SELECT ts, sensor_id, value, value_corr,
-            CASE WHEN value_corr IS NULL THEN value ELSE value_corr END AS value_edit
+            CASE WHEN value_corr IS NULL THEN value ELSE value_corr END AS value_edit,
+            status_id
     FROM measurement
     WHERE sensor_id = ?sensor_id AND ts >= ?min_date AND ts <= ?max_date
     ORDER BY ts;"
@@ -412,7 +413,7 @@ db_get_deleted_period_data <- function(con, sensor_id, start_date, end_date){
 
 #' Insert correction periods into correction table
 #'
-#' @param con DBIConnection
+#' @param con DBI Connection
 #' @param dataframe data.frame
 #'
 #' @importFrom DBI dbWriteTable dbExecute
@@ -451,7 +452,7 @@ db_update_correction <- function(con, dataframe) {
 
 #' Update measurement table with edited values
 #'
-#' @param con DBIConnection
+#' @param con DBI Connection
 #' @param dataframe data.frame with columns ts, sensor_id, value, value_corr and value_edit
 #'
 #' @importFrom DBI dbWriteTable dbExecute
@@ -463,7 +464,7 @@ db_update_measurement_edit <- function(con, dataframe){
 
   stopifnot(
     is.data.frame(dataframe),
-    all(c("ts", "sensor_id", "value", "value_corr", "value_edit") %in% names(dataframe)),
+    all(c("ts", "sensor_id", "value", "value_corr", "value_edit", "status_id") %in% names(dataframe)),
     length(unique(dataframe$sensor_id)) == 1
   )
 
@@ -473,7 +474,9 @@ db_update_measurement_edit <- function(con, dataframe){
     )
     sql <- glue::glue("
       UPDATE measurement
-      SET value_corr = temp_measurement.value_edit
+      SET
+        value_corr = temp_measurement.value_edit,
+        status_id = temp_measurement.status_id
       FROM temp_measurement
       WHERE measurement.sensor_id = temp_measurement.sensor_id
       AND measurement.ts = temp_measurement.ts;
@@ -493,7 +496,7 @@ db_update_measurement_edit <- function(con, dataframe){
 #'
 #' This function applies both measurement edits and correction periods in a single database transaction. If any part of the process fails, the entire transaction is rolled back to maintain data integrity.
 #'
-#' @param con DBIConnection
+#' @param con DBI Connection
 #' @param measurement_edit data.frame with columns ts, sensor_id, value, value_corr and value_edit (can be NULL if no measurement edit)
 #' @param correction_period data.frame with columns sensor_id, author_id, ts_start, ts_end, correction_type, value, comment (can be NULL if no correction period)
 #'

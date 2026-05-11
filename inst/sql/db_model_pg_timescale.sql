@@ -34,11 +34,17 @@ CREATE TABLE correction_type (
     name VARCHAR(255) NOT NULL UNIQUE
 );
 
+CREATE TABLE status (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
 CREATE TABLE measurement (
     ts TIMESTAMPTZ NOT NULL,
     sensor_id INTEGER NOT NULL REFERENCES sensor(id),
     value DOUBLE PRECISION,
     value_corr DOUBLE PRECISION,
+    status_id INTEGER REFERENCES status(id),
     CONSTRAINT measurement_pkey PRIMARY KEY (ts, sensor_id)
 );
 
@@ -60,6 +66,8 @@ CREATE TABLE correction (
 );
 
 INSERT INTO correction_type (name) VALUES ('Offset'), ('Drift'), ('Delete'), ('Interpolation');
+
+INSERT INTO status (name) VALUES ('Corrected'), ('Deleted'), ('Filtered and removed'), ('Filtered and corrected'), ('Extrapolated');
 
 CREATE TABLE field (
     ts TIMESTAMPTZ NOT NULL,

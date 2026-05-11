@@ -167,7 +167,8 @@ data_prepare_edit_and_correction <- function(
 
   if (correction_type == 1) { # offset
     measurement_edit <- measurement_edit %>%
-      mutate(value_edit = value_edit + offset)
+      mutate(value_edit = value_edit + offset,
+             status_id = 1) # measurement status = corrected
 
     correction_period <- data_get_correction_period(
       dataframe = measurement_edit,
@@ -181,7 +182,8 @@ data_prepare_edit_and_correction <- function(
 
   if (correction_type == 2) { # drift
     measurement_edit <- measurement_edit %>%
-      mutate(value_edit = data_edit_drift(ts, value_edit, drift))
+      mutate(value_edit = data_edit_drift(ts, value_edit, drift),
+             status_id = 1) # measurement status = corrected
 
     correction_period <- data_get_correction_period(
       dataframe = measurement_edit,
@@ -194,6 +196,10 @@ data_prepare_edit_and_correction <- function(
   }
 
   if (correction_type == 3) { # delete
+
+    measurement_edit <- measurement_edit %>%
+      mutate(status_id = 2) # measurement status = deleted
+
     correction_period <- data_get_deleted_periods(
       dataframe = measurement_edit,
       sensor_id = sensor_id,
@@ -206,7 +212,8 @@ data_prepare_edit_and_correction <- function(
 
   if (correction_type == 4) { # set value
     measurement_edit <- measurement_edit %>%
-      mutate(value_edit = set_value)
+      mutate(value_edit = set_value,
+             status_id = 1) # measurement status = corrected
 
     correction_period <- data_get_correction_period(
       dataframe = measurement_edit,

@@ -141,7 +141,7 @@ mod_edit_ui <- function(id){
 #' @importFrom shiny moduleServer observeEvent renderUI updateSelectInput
 #' @importFrom shiny selectInput actionButton sliderInput verbatimTextOutput
 #' @importFrom shiny renderPrint req reactiveValues checkboxInput
-#' @importFrom shiny updateCheckboxInput
+#' @importFrom shiny updateCheckboxInput textAreaInput numericInput
 #' @importFrom dygraphs renderDygraph dyEvent dyShading
 #' @importFrom shinyjs disable enable hide show
 #' @importFrom dplyr mutate filter arrange group_by summarise transmute

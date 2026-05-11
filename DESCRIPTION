@@ -18,7 +18,6 @@ Imports:
     leaflet,
     lubridate,
     magrittr,
-    plotly,
     rlang,
     RPostgres,
     shiny (>= 1.8.1),

@@ -7,7 +7,7 @@
 db_update_correction(con, dataframe)
 }
 \arguments{
-\item{con}{DBIConnection}
+\item{con}{DBI Connection}
 
 \item{dataframe}{data.frame}
 }

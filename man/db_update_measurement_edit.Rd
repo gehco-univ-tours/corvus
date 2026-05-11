@@ -7,7 +7,7 @@
 db_update_measurement_edit(con, dataframe)
 }
 \arguments{
-\item{con}{DBIConnection}
+\item{con}{DBI Connection}
 
 \item{dataframe}{data.frame with columns ts, sensor_id, value, value_corr and value_edit}
 }

@@ -10,5 +10,11 @@ globalVariables(unique(c(
   # db_get_fieldwork_data:
   "ts",
   # db_get_measurement:
-  "ts"
+  "ts",
+  # data_get_deleted_periods:
+  "flag_delete", "new_period", "period_id", "value_edit",
+  # data_prepare_edit_and_correction:
+  "value_edit",
+  # mod_edit_server : <anonymous>:
+  "value_edit"
 )))
