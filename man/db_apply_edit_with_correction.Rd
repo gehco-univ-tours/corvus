@@ -4,12 +4,19 @@
 \alias{db_apply_edit_with_correction}
 \title{Apply measurement edit and correction periods in a single transaction}
 \usage{
-db_apply_edit_with_correction(con, measurement_edit, correction_period)
+db_apply_edit_with_correction(
+  con,
+  correction_type,
+  measurement_edit,
+  correction_period
+)
 }
 \arguments{
 \item{con}{DBI Connection}
 
-\item{measurement_edit}{data.frame with columns ts, sensor_id, value, value_corr and value_edit (can be NULL if no measurement edit)}
+\item{correction_type}{int Define correction type applied to raw data}
+
+\item{measurement_edit}{data.frame with columns ts, sensor_id, value}
 
 \item{correction_period}{data.frame with columns sensor_id, author_id, ts_start, ts_end, correction_type, value, comment (can be NULL if no correction period)}
 }

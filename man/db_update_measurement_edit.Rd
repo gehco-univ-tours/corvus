@@ -2,18 +2,18 @@
 % Please edit documentation in R/fct_db.R
 \name{db_update_measurement_edit}
 \alias{db_update_measurement_edit}
-\title{Update measurement table with edited values}
+\title{Update measurement_corr table with edited values}
 \usage{
-db_update_measurement_edit(con, dataframe)
+db_update_measurement_edit(con, correction_type, dataframe)
 }
 \arguments{
 \item{con}{DBI Connection}
 
-\item{dataframe}{data.frame with columns ts, sensor_id, value, value_corr and value_edit}
+\item{dataframe}{data.frame with columns ts, sensor_id, value}
 }
 \value{
 integer Number of rows updated
 }
 \description{
-Update measurement table with edited values
+Update measurement_corr table with edited values
 }

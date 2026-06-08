@@ -14,7 +14,7 @@ data_get_correction_period(
 )
 }
 \arguments{
-\item{dataframe}{data.frame: data frame with ts, value, value_corr and value_edit columns}
+\item{dataframe}{data.frame: data frame with ts, value columns}
 
 \item{sensor_id}{integer: sensor id}
 

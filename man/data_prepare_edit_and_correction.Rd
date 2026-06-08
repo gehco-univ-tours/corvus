@@ -5,7 +5,7 @@
 \title{Prepare edited measurement data and correction period for database update}
 \usage{
 data_prepare_edit_and_correction(
-  measurement_tocorr,
+  measurement_edit,
   correction_type,
   sensor_id,
   start_date,
@@ -15,11 +15,12 @@ data_prepare_edit_and_correction(
   offset = NULL,
   drift = NULL,
   delete_threshold = NULL,
-  set_value = NULL
+  set_value = NULL,
+  median_interval = NULL
 )
 }
 \arguments{
-\item{measurement_tocorr}{data.frame: data frame with ts, value, value_corr and value_edit columns}
+\item{measurement_edit}{data.frame: data frame with ts, value columns}
 
 \item{correction_type}{integer: correction type id (1 for offset, 2 for drift, 3 for delete, 4 for set value)}
 
@@ -45,5 +46,5 @@ data_prepare_edit_and_correction(
 list with measurement_edit data frame and correction_period data frame
 }
 \description{
-This function prepares the edited measurement data and the corresponding correction period based on the specified correction type. It filters the measurement data for the given date range and applies the appropriate correction (offset, drift, delete, or set value) to the `value_edit` column. It also generates a correction period data frame that can be used to update the database with the correction details.
+This function prepares the edited measurement data and the corresponding correction period based on the specified correction type.
 }

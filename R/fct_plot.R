@@ -6,13 +6,18 @@
 #' @param display_opts A list of boolean values indicating which series to display (raw, corrected, additional).
 #'
 #' @importFrom xts xts
-#' @importFrom dygraphs dygraph dyRangeSelector dySeries dyAxis dyCrosshair
+#' @importFrom dygraphs dygraph dyRangeSelector dySeries dyAxis dyCrosshair dyOptions
 #'
 #' @return A dygraph object that can be rendered in a Shiny app or R Markdown document.
 #' @export
 plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, display_opts){
 
-  if (all(display_opts == FALSE)) {
+  no_data <- (
+    is.null(data$measurement_raw) ||
+      length(data$measurement_raw[["value"]]) == 0
+  )
+
+  if (all(display_opts == FALSE) || no_data) {
     # display empty dygraph plot
     df_empty <- data.frame(ts = seq.POSIXt(from = Sys.time() - 3600, to = Sys.time(), by = "min"), value = NA)
     empty_xts <- xts::xts(df_empty$value, order.by = as.POSIXct(df_empty$ts))
@@ -24,27 +29,42 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
 
   # create xts object
   raw_xts <- xts::xts(
-    data$measurement_tocorr[["value"]],
-    order.by = data$measurement_tocorr$ts
+    data$measurement_raw[["value"]],
+    order.by = data$measurement_raw$ts
   )
 
-  corr_xts <- xts::xts(
-    data$measurement_tocorr[["value_corr"]],
-    order.by = data$measurement_tocorr$ts
-  )
+  corr_xts <- NULL
+  if (!is.null(data$measurement_corr) &&
+      length(data$measurement_corr[["value"]]) > 0) {
+    corr_xts <- xts::xts(
+      data$measurement_corr[["value"]],
+      order.by = data$measurement_corr$ts
+    )
+  }
+
+  filter_xts <- NULL
+  if (!is.null(data$measurement_filter) &&
+      length(data$measurement_filter[["value"]]) > 0) {
+    filter_xts <- xts::xts(
+      data$measurement_filter[["value"]],
+      order.by = data$measurement_filter$ts
+    )
+  }
 
   add_xts <- NULL
-  if (!is.null(data$measurement_add)) {
+  if (!is.null(data$measurement_add) &&
+      length(data$measurement_add[["value"]]) > 0) {
     add_xts <- xts::xts(
-      data$measurement_add[["value_edit"]],
+      data$measurement_add[["value"]],
       order.by = data$measurement_add$ts
     )
   }
 
   edit_xts <- NULL
-  if (!is.null(data$measurement_edit[["value_edit"]])) {
+  if (!is.null(data$measurement_edit[["value"]]) &&
+      length(data$measurement_edit[["value"]]) > 0) {
     edit_xts <- xts::xts(
-      data$measurement_edit[["value_edit"]],
+      data$measurement_edit[["value"]],
       order.by = data$measurement_edit$ts
     )
   }
@@ -52,8 +72,9 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
   # merge series
   series_list <- list()
 
-  if (display_opts$measurement_tocorr_raw) series_list$raw <- raw_xts
-  if (display_opts$measurement_tocorr_corr) series_list$corr <- corr_xts
+  if (display_opts$measurement_raw) series_list$raw <- raw_xts
+  if (display_opts$measurement_corr && !is.null(corr_xts)) series_list$corr <- corr_xts
+  if (display_opts$measurement_filter && !is.null(filter_xts)) series_list$filter <- filter_xts
   if (display_opts$measurement_add && !is.null(add_xts)) series_list$add <- add_xts
   if (display_opts$measurement_edit && !is.null(edit_xts)) series_list$edit <- edit_xts
 
@@ -65,7 +86,9 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
   # create dygraph
   dy <- dygraphs::dygraph(all_series) %>%
     dygraphs::dyCrosshair(direction = "vertical") %>%
-    dygraphs::dyRangeSelector()
+    dygraphs::dyRangeSelector() %>%
+    dygraphs::dyOptions(useDataTimezone = TRUE)
+
 
   # add series
   if ("add" %in% colnames(all_series)) {
@@ -90,6 +113,13 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
                          color = "green")
   }
 
+  if ("filter" %in% colnames(all_series)) {
+    dy <- dy %>%
+      dygraphs::dySeries("filter",
+                         label = paste0(parameter_tocorr_name, " filtered"),
+                         color = "magenta")
+  }
+
   if ("edit" %in% colnames(all_series)) {
     dy <- dy %>%
       dygraphs::dySeries("edit",
@@ -105,3 +135,4 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
 
   return(dy)
 }
+

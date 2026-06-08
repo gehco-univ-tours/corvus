@@ -34,28 +34,43 @@ CREATE TABLE correction_type (
     name VARCHAR(255) NOT NULL UNIQUE
 );
 
-CREATE TABLE status (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE
-);
-
 CREATE TABLE measurement (
     ts TIMESTAMPTZ NOT NULL,
     sensor_id INTEGER NOT NULL REFERENCES sensor(id),
     value DOUBLE PRECISION,
-    value_corr DOUBLE PRECISION,
-    status_id INTEGER REFERENCES status(id),
     CONSTRAINT measurement_pkey PRIMARY KEY (ts, sensor_id)
 );
 
+
+CREATE TABLE measurement_corr (
+    ts TIMESTAMPTZ NOT NULL,
+    sensor_id INTEGER NOT NULL REFERENCES sensor(id),
+    value DOUBLE PRECISION,
+    CONSTRAINT measurement_corr_pkey PRIMARY KEY (ts, sensor_id)
+);
+
+CREATE TABLE measurement_filter (
+    ts TIMESTAMPTZ NOT NULL,
+    sensor_id INTEGER NOT NULL REFERENCES sensor(id),
+    value DOUBLE PRECISION,
+    CONSTRAINT measurement_filter_pkey PRIMARY KEY (ts, sensor_id)
+);
+
 SELECT create_hypertable('measurement', by_range('ts'));
-
 CREATE UNIQUE INDEX idx_measurement_ts_sensor_id ON measurement(ts, sensor_id);
-
 CREATE INDEX idx_measurement_sensor_id ON measurement(sensor_id);
+
+SELECT create_hypertable('measurement_corr', by_range('ts'));
+CREATE UNIQUE INDEX idx_measurement_corr_ts_sensor_id ON measurement_corr(ts, sensor_id);
+CREATE INDEX idx_measurement_corr_sensor_id ON measurement_corr(sensor_id);
+
+SELECT create_hypertable('measurement_filter', by_range('ts'));
+CREATE UNIQUE INDEX idx_measurement_filter_ts_sensor_id ON measurement_filter(ts, sensor_id);
+CREATE INDEX idx_measurement_filter_sensor_id ON measurement_filter(sensor_id);
 
 CREATE TABLE correction (
     id SERIAL PRIMARY KEY,
+    ts_corr TIMESTAMPTZ NOT NULL,
     sensor_id INTEGER NOT NULL REFERENCES sensor(id),
     author_id INTEGER NOT NULL REFERENCES author(id),
     ts_start TIMESTAMPTZ NOT NULL,
@@ -67,8 +82,6 @@ CREATE TABLE correction (
 
 INSERT INTO correction_type (name) VALUES ('Offset'), ('Drift'), ('Delete'), ('Interpolation');
 
-INSERT INTO status (name) VALUES ('Corrected'), ('Deleted'), ('Filtered and removed'), ('Filtered and corrected'), ('Extrapolated');
-
 CREATE TABLE field (
     ts TIMESTAMPTZ NOT NULL,
     author_id INTEGER NOT NULL REFERENCES author(id),
@@ -77,13 +90,6 @@ CREATE TABLE field (
     CONSTRAINT field_pkey PRIMARY KEY (ts, station_id)
 );
 
-CREATE TABLE validated_period (
-    id SERIAL PRIMARY KEY,
-    sensor_id INTEGER NOT NULL REFERENCES sensor(id),
-    ts_start TIMESTAMPTZ NOT NULL,
-    ts_end TIMESTAMPTZ NOT NULL,
-    comment TEXT
-);
 
 -- Add view (optional)
 
@@ -93,8 +99,7 @@ WITH (timescaledb.continuous) AS
 SELECT
 	time_bucket(INTERVAL '1 hour', ts) AS ts,
 	sensor_id,
-	AVG(value) AS value,
-	AVG(value_corr) AS value_corr
+	AVG(value) AS value
 FROM measurement
 GROUP BY sensor_id, time_bucket(INTERVAL '1 hour', ts);
 
@@ -110,8 +115,7 @@ WITH (timescaledb.continuous) AS
 SELECT
 	time_bucket(INTERVAL '1 day', ts) AS ts,
 	sensor_id,
-	AVG(value) AS value,
-	AVG(value_corr) AS value_corr
+	AVG(value) AS value
 FROM measurement
 GROUP BY sensor_id, time_bucket(INTERVAL '1 day', ts);
 
@@ -127,8 +131,7 @@ CREATE VIEW measurement_data AS (
         station.code AS station,
         parameter.name AS parameter,
         measurement.ts AS ts,
-        measurement.value AS value,
-        measurement.value_corr AS value_corr
+        measurement.value AS value
     FROM measurement
     JOIN sensor ON measurement.sensor_id = sensor.id
     JOIN parameter ON sensor.parameter_id = parameter.id

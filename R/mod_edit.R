@@ -22,12 +22,12 @@ mod_edit_ui <- function(id){
         add_busy_bar(color = "#FF0000"),
         column(
           width = 2,
-          uiOutput(ns("checkbox_measurement_tocorr_raw_ui")),
-          uiOutput(ns("checkbox_measurement_tocorr_corr_ui")),
+          uiOutput(ns("checkbox_measurement_raw_ui")),
+          uiOutput(ns("checkbox_measurement_corr_ui")),
+          uiOutput(ns("checkbox_measurement_filter_ui")),
           uiOutput(ns("checkbox_measurement_edit_ui")),
           uiOutput(ns("checkbox_measurement_add_ui")),
           uiOutput(ns("checkbox_fieldwork_ui")),
-          uiOutput(ns("checkbox_validated_period_ui")),
           uiOutput(ns("checkbox_deleted_period_ui"))
         ),
         column(
@@ -101,6 +101,7 @@ mod_edit_ui <- function(id){
         column(
           width = 3,
           uiOutput(ns("value_edit_ui")),
+          uiOutput(ns("value_edit2_ui")),
           uiOutput(ns("plot_edit_ui")),
           tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_edit_ui"))
@@ -145,7 +146,9 @@ mod_edit_ui <- function(id){
 #' @importFrom dygraphs renderDygraph dyEvent dyShading
 #' @importFrom shinyjs disable enable hide show
 #' @importFrom dplyr mutate filter arrange group_by summarise transmute
-#' @importFrom lubridate hm ymd ymd_hm
+#' @importFrom lubridate hm ymd ymd_hm seconds
+#' @importFrom slider slide_index_dbl
+#' @importFrom stats predict
 #' @importFrom DT datatable renderDataTable
 mod_edit_server <- function(id, con, r_globals){
   moduleServer(id, function(input, output, session){
@@ -182,7 +185,9 @@ mod_edit_server <- function(id, con, r_globals){
       parameter_tocorr_update = 0,
       parameter_add_update = 0,
       data = list(
-        measurement_tocorr = NULL,
+        measurement_raw = NULL,
+        measurement_corr = NULL,
+        measurement_filter = NULL,
         measurement_edit = NULL,
         measurement_add = NULL,
         fieldwork = NULL,
@@ -190,8 +195,9 @@ mod_edit_server <- function(id, con, r_globals){
         deleted = NULL
       ),
       checkbox_graph = list(
-        measurement_tocorr_raw = TRUE,
-        measurement_tocorr_corr = FALSE,
+        measurement_raw = TRUE,
+        measurement_corr = FALSE,
+        measurement_filter = FALSE,
         measurement_add = FALSE,
         measurement_edit = FALSE,
         fieldwork = FALSE,
@@ -200,6 +206,7 @@ mod_edit_server <- function(id, con, r_globals){
         validated_period = FALSE
       ),
       update_plot = 0,
+      trigger_checkbox_update = 0,
       dygraph = NULL,
       fieldwork_table = NULL,
       start_or_end = NULL,
@@ -315,26 +322,32 @@ mod_edit_server <- function(id, con, r_globals){
       req(r_locals$sensor_id_add)
 
       # get data
-      r_locals$data$measurement_tocorr <- db_get_measurement(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
-      r_locals$data$measurement_add <- db_get_measurement(con, r_locals$sensor_id_add, input$date[1], input$date[2])
+      r_locals$data$measurement_raw <- db_get_measurement_raw(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_corr <- db_get_measurement_corr(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_filter <- db_get_measurement_filter(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_add <- db_get_measurement_raw_corr(con, r_locals$sensor_id_add, input$date[1], input$date[2])
       r_locals$data$fieldwork <- db_get_fieldwork_data(con, input$station, input$date[1], input$date[2])
-      r_locals$data$validated <- db_get_validated_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
       r_locals$data$deleted <- db_get_deleted_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
 
       # update checkbox UI
-      output$checkbox_measurement_tocorr_raw_ui <- renderUI({
-        checkboxInput(inputId = ns("checkbox_measurement_tocorr_raw"),
+      output$checkbox_measurement_raw_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_raw"),
                       label = paste("Raw data (", r_locals$parameter_tocorr_name, ")", sep = ""),
                       value = TRUE)
       })
-      output$checkbox_measurement_tocorr_corr_ui <- renderUI({
-        checkboxInput(inputId = ns("checkbox_measurement_tocorr_corr"),
+      output$checkbox_measurement_corr_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_corr"),
                       label = paste("Corrected data (", r_locals$parameter_tocorr_name, ")", sep = ""),
+                      value = FALSE)
+      })
+      output$checkbox_measurement_filter_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_filter"),
+                      label = paste("Filtered data (", r_locals$parameter_tocorr_name, ")", sep = ""),
                       value = FALSE)
       })
       output$checkbox_measurement_edit_ui <- renderUI({
         checkboxInput(inputId = ns("checkbox_measurement_edit"),
-                      label = paste("Edited data (", r_locals$parameter_add_name, ")", sep = ""),
+                      label = paste("Edited data (", r_locals$parameter_tocorr_name, ")", sep = ""),
                       value = FALSE)
       })
       output$checkbox_measurement_add_ui <- renderUI({
@@ -347,12 +360,7 @@ mod_edit_server <- function(id, con, r_globals){
                       label = "Fieldwork",
                       value = FALSE)
       })
-      output$checkbox_validated_period_ui <- renderUI({
-        checkboxInput(inputId = ns("checkbox_validated_period"),
-                      label = "Validated period",
-                      value = FALSE)
-      })
-      output$checkbox_validated_period_ui <- renderUI({
+      output$checkbox_deleted_period_ui <- renderUI({
         checkboxInput(inputId = ns("checkbox_deleted_period"),
                       label = "Deleted period",
                       value = FALSE)
@@ -366,7 +374,7 @@ mod_edit_server <- function(id, con, r_globals){
       # reset measurement edit
       r_locals$data$measurement_edit = NULL
 
-      r_locals$update_plot <- r_locals$update_plot + 1
+      r_locals$trigger_checkbox_update <- r_locals$trigger_checkbox_update +1
 
       print("Plot bttn")
 
@@ -374,14 +382,17 @@ mod_edit_server <- function(id, con, r_globals){
 
     #### Checkboxes ####
 
-    observeEvent(list(input$checkbox_measurement_tocorr_raw,
-                      input$checkbox_measurement_tocorr_corr,
+    observeEvent(list(input$checkbox_measurement_raw,
+                      input$checkbox_measurement_corr,
+                      input$checkbox_measurement_filter,
                       input$checkbox_measurement_add,
-                      input$checkbox_measurement_edit
+                      input$checkbox_measurement_edit,
+                      r_locals$trigger_checkbox_update
                       ), ignoreInit = TRUE, {
 
-      r_locals$checkbox_graph$measurement_tocorr_raw <- input$checkbox_measurement_tocorr_raw
-      r_locals$checkbox_graph$measurement_tocorr_corr <- input$checkbox_measurement_tocorr_corr
+      r_locals$checkbox_graph$measurement_raw <- input$checkbox_measurement_raw
+      r_locals$checkbox_graph$measurement_corr <- input$checkbox_measurement_corr
+      r_locals$checkbox_graph$measurement_filter <- input$checkbox_measurement_filter
       r_locals$checkbox_graph$measurement_add <- input$checkbox_measurement_add
       r_locals$checkbox_graph$measurement_edit <- input$checkbox_measurement_edit
 
@@ -391,13 +402,11 @@ mod_edit_server <- function(id, con, r_globals){
     })
 
 
-    #### Validated period, deleted period and fieldwork ####
+    #### Deleted period and fieldwork ####
 
-    observeEvent(list(input$checkbox_validated_period,
-                      input$checkbox_fieldwork,
+    observeEvent(list(input$checkbox_fieldwork,
                       input$checkbox_deleted_period), ignoreInit = TRUE, {
 
-      r_locals$checkbox_graph$validated_period <- input$checkbox_validated_period
       r_locals$checkbox_graph$fieldwork <- input$checkbox_fieldwork
       r_locals$checkbox_graph$deleted_period <- input$checkbox_deleted_period
 
@@ -409,13 +418,14 @@ mod_edit_server <- function(id, con, r_globals){
         r_locals$fieldwork_table <- NULL
       }
 
-      print("Validated, deleted period or fieldworks")
+      print("Deleted period or fieldworks")
     })
 
     #### Update plot ####
 
     observeEvent(r_locals$update_plot, {
-      req(r_locals$data$measurement_tocorr, r_locals$data$measurement_add)
+      req(r_locals$data$measurement_raw, r_locals$data$measurement_corr,
+          r_locals$data$measurement_filter, r_locals$data$measurement_add)
 
       r_locals$dygraph <- plot_dygraph(
         data = r_locals$data,
@@ -453,18 +463,6 @@ mod_edit_server <- function(id, con, r_globals){
                                    color = "rgba(150,150,150,0.2)")
       }
 
-      # validated periods (green zone)
-      if (isTRUE(r_locals$checkbox_graph$validated_period) && !is.null(r_locals$data$validated)) {
-        for (i in seq_len(nrow(r_locals$data$validated))) {
-          plot <- plot %>%
-            dygraphs::dyShading(
-              from = r_locals$data$validated$ts_start[i],
-              to   = r_locals$data$validated$ts_end[i],
-              color = "rgba(0,255,0,0.1)"
-            )
-        }
-      }
-
       # deleted periods (red zone)
       if (isTRUE(r_locals$checkbox_graph$deleted_period) && !is.null(r_locals$data$deleted)) {
         for (i in seq_len(nrow(r_locals$data$deleted))) {
@@ -472,7 +470,7 @@ mod_edit_server <- function(id, con, r_globals){
             dygraphs::dyShading(
               from = r_locals$data$deleted$ts_start[i],
               to   = r_locals$data$deleted$ts_end[i],
-              color = "rgba(255,0,0,0.1)"
+              color = "rgba(255,0,0,0.3)"
             )
         }
       }
@@ -495,7 +493,7 @@ mod_edit_server <- function(id, con, r_globals){
     #### Click on plot ####
 
     # set start or end editing
-    observeEvent(input$plot_click, {
+    observeEvent(list(input$plot_click, input$reset_start_end_date), {
       req(r_locals$start_or_end)
 
       click_time <- as.POSIXct(
@@ -517,6 +515,9 @@ mod_edit_server <- function(id, con, r_globals){
 
       if (!is.null(r_locals$start_date) && !is.null(r_locals$end_date)){
         shinyjs::delay(100, shinyjs::enable("plot_edit"))
+      } else {
+        shinyjs::delay(100, shinyjs::disable("plot_edit"))
+        shinyjs::delay(100, shinyjs::disable("validate_edit"))
       }
 
       print("Click on plot")
@@ -597,6 +598,9 @@ mod_edit_server <- function(id, con, r_globals){
         output$value_edit_ui <- renderUI({
           NULL
         })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
         output$plot_edit_ui <- renderUI({
           NULL
         })
@@ -621,7 +625,6 @@ mod_edit_server <- function(id, con, r_globals){
       r_locals$start_or_end = "end"
     })
 
-
     ##### Reset start and end date button ####
 
     observeEvent(input$reset_start_end_date, {
@@ -642,11 +645,17 @@ mod_edit_server <- function(id, con, r_globals){
                        label = "Offset value",
                        value = 0)
         })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
       } else if (input$correction == 2){ # drift
         output$value_edit_ui <- renderUI({
           numericInput(inputId = ns("drift_edit"),
                        label = "Drift end value",
                        value = 0)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
         })
       } else if (input$correction == 3){ # delete
         output$value_edit_ui <- renderUI({
@@ -654,14 +663,54 @@ mod_edit_server <- function(id, con, r_globals){
                          label = "Delete above this value",
                          value = 0)
         })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
       } else if (input$correction == 4){ # set values
         output$value_edit_ui <- renderUI({
           numericInput(inputId = ns("set_value"),
                        label = "Set value",
                        value = 0)
         })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 5){ # median filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("median_interval"),
+                       label = "Filter interval (min)",
+                       value = 15)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      # } else if (input$correction == 6){ # loess filter
+      #   output$value_edit_ui <- renderUI({
+      #     numericInput(inputId = ns("loess_span"),
+      #                  label = "Loess span",
+      #                  value = 0.1)
+      #   })
+      #   output$value_edit2_ui <- renderUI({
+      #     NULL
+      #   })
+      # } else if (input$correction == 7){ # Hampel interval
+      #   output$value_edit_ui <- renderUI({
+      #     numericInput(inputId = ns("hampel_interval"),
+      #                  label = "Filter interval (min)",
+      #                  value = 15)
+      #   })
+      #   output$value_edit2_ui <- renderUI({ # Hampel filter
+      #     numericInput(inputId = ns("hampel_value"),
+      #                  label = "Hampel k",
+      #                  value = 3)
+      #   })
       } else {
-        output$value_edit_ui <- NULL
+        output$value_edit_ui <- renderUI({
+          NULL
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
       }
     })
 
@@ -671,26 +720,57 @@ mod_edit_server <- function(id, con, r_globals){
       req(r_locals$start_date, r_locals$end_date)
 
       # get data to correct
-      r_locals$data$measurement_edit <- r_locals$data$measurement_tocorr %>%
-        dplyr::filter(ts >= r_locals$start_date & ts <= r_locals$end_date)
+      r_locals$data$measurement_edit <- data_get_measurement_edit(measurement_raw = r_locals$data$measurement_raw,
+                                                                  measurement_corr = r_locals$data$measurement_corr) %>%
+        dplyr::filter(ts >= r_locals$start_date & ts <= r_locals$end_date) %>%
+        dplyr::arrange(ts)
 
       # apply correction
       if (input$correction == 1) { # offset
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value_edit = value_edit + input$offset_edit)
+          dplyr::mutate(value = value + input$offset_edit)
       }
       if (input$correction == 2){ # drift
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value_edit = data_edit_drift(ts, value_edit, input$drift_edit))
+          dplyr::mutate(value = data_edit_drift(ts, value, input$drift_edit))
       }
       if (input$correction == 3){ # delete
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::filter(value_edit <= input$delete_threshold)
+          dplyr::mutate(
+            value = as.numeric(ifelse(value > input$delete_threshold, NA, value)))
       }
       if (input$correction == 4){ # set value
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value_edit = input$set_value)
+          dplyr::mutate(value = input$set_value)
       }
+      if (input$correction == 5){ # median filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = slide_index_dbl(
+            value,
+            .i = ts,
+            .f = median,
+            .before = seconds(input$median_interval/2*60),
+            .after = seconds(input$median_interval/2*60),
+            .complete = FALSE
+          ))
+      }
+      # if (input$correction == 6){ # loess filter
+      #   r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+      #     dplyr::mutate(value = predict(
+      #       loess(value ~ as.numeric(ts), span = input$loess_span)
+      #     ))
+      # }
+      # if (input$correction == 7){ # Hampel filter
+      #   r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+      #     dplyr::mutate(value = slide_index_dbl(
+      #       value,
+      #       .i = ts,
+      #       .f = ~ data_hampel_filter (.x, k = input$hampel_value),
+      #       .before = seconds(input$hampel_interval*60),
+      #       .after = 0,
+      #       complete = FALSE
+      #     ))
+      # }
 
       # plot
       if(!isTRUE(input$checkbox_measurement_edit)){
@@ -709,7 +789,7 @@ mod_edit_server <- function(id, con, r_globals){
     observeEvent(input$validate_edit, {
 
       prepared <- data_prepare_edit_and_correction(
-        measurement_tocorr = r_locals$data$measurement_tocorr,
+        measurement_edit = r_locals$data$measurement_edit,
         correction_type = as.integer(input$correction),
         sensor_id = r_locals$sensor_id_tocorr,
         start_date = r_locals$start_date,
@@ -719,14 +799,22 @@ mod_edit_server <- function(id, con, r_globals){
         offset = input$offset_edit,
         drift = input$drift_edit,
         delete_threshold = input$delete_threshold,
-        set_value = input$set_value
+        set_value = input$set_value,
+        median_interval = input$median_interval
       )
 
       r_locals$userinfo$db_result <- db_apply_edit_with_correction(
         con = con,
+        correction_type = as.integer(input$correction),
         measurement_edit = prepared$measurement_edit,
         correction_period = prepared$correction_period
       )
+
+      r_locals$data$measurement_edit <- NULL
+      r_locals$data$measurement_corr <- db_get_measurement_corr(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$deleted <- db_get_deleted_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      shinyjs::disable("validate_edit")
+      r_locals$update_plot <- r_locals$update_plot + 1
 
       print("Validated")
 

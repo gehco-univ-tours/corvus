@@ -24,6 +24,7 @@ Imports:
     shinybusy,
     shinyjs,
     shinyWidgets,
+    slider,
     stats,
     stringr,
     tidyselect,

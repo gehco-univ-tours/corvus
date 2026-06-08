@@ -295,7 +295,7 @@ db_min_max_date <- function(con){
   return(data)
 }
 
-#' Data
+#' Raw data
 #'
 #' This function returns the measurements based on the sensor id and the date range.
 #'
@@ -310,17 +310,105 @@ db_min_max_date <- function(con){
 #'
 #' @return data.frame
 #' @export
-db_get_measurement <- function(con, sensor_id, min_date, max_date){
-  sql <- "SELECT ts, sensor_id, value, value_corr,
-            CASE WHEN value_corr IS NULL THEN value ELSE value_corr END AS value_edit,
-            status_id
+db_get_measurement_raw <- function(con, sensor_id, min_date, max_date){
+  sql <- "SELECT ts, sensor_id, value
     FROM measurement
     WHERE sensor_id = ?sensor_id AND ts >= ?min_date AND ts <= ?max_date
     ORDER BY ts;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
-    mutate(ts = as.POSIXct(ts, tz = 'UTC')) %>%
-    mutate(ts = with_tz(ts, tzone = Sys.timezone()))
+    mutate(ts = as.POSIXct(ts, tz = 'UTC'))
+    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
+  return(data)
+}
+
+#' Corrected data
+#'
+#' This function returns the measurements based on the sensor id and the date range.
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#' @param min_date POSIXct: minimum date
+#' @param max_date POSIXct: maximum date
+#'
+#' @importFrom DBI dbGetQuery sqlInterpolate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate with_tz
+#'
+#' @return data.frame
+#' @export
+db_get_measurement_corr <- function(con, sensor_id, min_date, max_date){
+  sql <- "SELECT ts, sensor_id, value
+    FROM measurement_corr
+    WHERE sensor_id = ?sensor_id AND ts >= ?min_date AND ts <= ?max_date
+    ORDER BY ts;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
+  data <- dbGetQuery(con, query) %>%
+    mutate(ts = as.POSIXct(ts, tz = 'UTC'))
+    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
+  return(data)
+}
+
+#' Get cleaned data with correction applied
+#'
+#' This function returns the measurements based on the sensor id and the date range.
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#' @param min_date POSIXct: minimum date
+#' @param max_date POSIXct: maximum date
+#'
+#' @importFrom DBI dbGetQuery sqlInterpolate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate with_tz
+#'
+#' @return data.frame
+#' @export
+db_get_measurement_raw_corr <- function(con, sensor_id, min_date, max_date){
+  sql <- "SELECT
+        m.ts,
+        m.sensor_id,
+        CASE
+            WHEN mc.ts IS NOT NULL THEN mc.value
+            ELSE m.value
+        END AS value
+    FROM measurement m
+    LEFT JOIN measurement_corr mc
+        ON m.ts = mc.ts
+       AND m.sensor_id = mc.sensor_id
+    WHERE m.sensor_id = ?sensor_id AND m.ts >= ?min_date AND m.ts <= ?max_date
+    ORDER BY m.ts;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
+  data <- dbGetQuery(con, query) %>%
+    mutate(ts = as.POSIXct(ts, tz = 'UTC'))
+    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
+  return(data)
+}
+
+#' Filtered data
+#'
+#' This function returns the measurements based on the sensor id and the date range.
+#'
+#' @param con PqConnection: database connection
+#' @param sensor_id integer: sensor id
+#' @param min_date POSIXct: minimum date
+#' @param max_date POSIXct: maximum date
+#'
+#' @importFrom DBI dbGetQuery sqlInterpolate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate with_tz
+#'
+#' @return data.frame
+#' @export
+db_get_measurement_filter <- function(con, sensor_id, min_date, max_date){
+  sql <- "SELECT ts, sensor_id, value
+    FROM measurement_filter
+    WHERE sensor_id = ?sensor_id AND ts >= ?min_date AND ts <= ?max_date
+    ORDER BY ts;"
+  query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
+  data <- dbGetQuery(con, query) %>%
+    mutate(ts = as.POSIXct(ts, tz = 'UTC'))
+    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -347,8 +435,8 @@ db_get_fieldwork_data <- function(con, station_id, start_date, end_date){
     ORDER BY ts;"
   query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)
   data <- dbGetQuery(con, query) %>%
-    mutate(ts = as.POSIXct(ts, tz = 'UTC')) %>%
-    mutate(ts = with_tz(ts, tzone = Sys.timezone()))
+    mutate(ts = as.POSIXct(ts, tz = 'UTC'))
+    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -375,9 +463,9 @@ db_get_validated_period_data <- function(con, sensor_id, start_date, end_date){
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date)
   data <- dbGetQuery(con, query) %>%
     mutate(ts_start = as.POSIXct(ts_start, tz = 'UTC')) %>%
-    mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC')) %>%
-    mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
-    mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
+    mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC'))
+    # mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
+    # mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -405,9 +493,9 @@ db_get_deleted_period_data <- function(con, sensor_id, start_date, end_date){
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date)
   data <- dbGetQuery(con, query) %>%
     mutate(ts_start = as.POSIXct(ts_start, tz = 'UTC')) %>%
-    mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC')) %>%
-    mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
-    mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
+    mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC'))
+    # mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
+    # mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -425,7 +513,7 @@ db_update_correction <- function(con, dataframe) {
 
   stopifnot(
     is.data.frame(dataframe),
-    all(c("sensor_id", "author_id", "ts_start", "ts_end", "correction_type",
+    all(c("ts_corr", "sensor_id", "author_id", "ts_start", "ts_end", "correction_type",
       "value", "comment"
     ) %in% names(dataframe))
   )
@@ -435,10 +523,10 @@ db_update_correction <- function(con, dataframe) {
       temporary = TRUE, row.names = FALSE)
 
     sql <- glue::glue("
-      INSERT INTO correction (sensor_id, author_id, ts_start, ts_end,
+      INSERT INTO correction (ts_corr, sensor_id, author_id, ts_start, ts_end,
         correction_type, value, comment)
       SELECT
-        sensor_id, author_id, ts_start, ts_end, correction_type, value, comment
+        ts_corr,sensor_id, author_id, ts_start, ts_end, correction_type, value, comment
       FROM temp_correction")
     rows <- DBI::dbExecute(con, sql)
     DBI::dbExecute(con, "DROP TABLE temp_correction")
@@ -450,21 +538,21 @@ db_update_correction <- function(con, dataframe) {
   })
 }
 
-#' Update measurement table with edited values
+#' Update measurement_corr table with edited values
 #'
 #' @param con DBI Connection
-#' @param dataframe data.frame with columns ts, sensor_id, value, value_corr and value_edit
+#' @param dataframe data.frame with columns ts, sensor_id, value
 #'
 #' @importFrom DBI dbWriteTable dbExecute
 #' @importFrom glue glue
 #'
 #' @return integer Number of rows updated
 #' @export
-db_update_measurement_edit <- function(con, dataframe){
+db_update_measurement_edit <- function(con, correction_type, dataframe){
 
   stopifnot(
     is.data.frame(dataframe),
-    all(c("ts", "sensor_id", "value", "value_corr", "value_edit", "status_id") %in% names(dataframe)),
+    all(c("ts", "sensor_id", "value") %in% names(dataframe)),
     length(unique(dataframe$sensor_id)) == 1
   )
 
@@ -472,14 +560,24 @@ db_update_measurement_edit <- function(con, dataframe){
     DBI::dbWriteTable(con, name = "temp_measurement", value = dataframe,
                        temporary = TRUE, row.names = FALSE
     )
+
+    if (correction_type %in% c(1,2,3,4)){
+      measurement_table <- "measurement_corr"
+    } else {
+      measurement_table <- "measurement_filter"
+    }
+
     sql <- glue::glue("
-      UPDATE measurement
-      SET
-        value_corr = temp_measurement.value_edit,
-        status_id = temp_measurement.status_id
+      INSERT INTO {measurement_table} (sensor_id, ts, value)
+      SELECT
+          sensor_id,
+          ts,
+          value
       FROM temp_measurement
-      WHERE measurement.sensor_id = temp_measurement.sensor_id
-      AND measurement.ts = temp_measurement.ts;
+      ON CONFLICT (sensor_id, ts)
+      DO UPDATE
+      SET value = EXCLUDED.value
+      WHERE {measurement_table}.value IS DISTINCT FROM EXCLUDED.value;
       ")
     rows <- DBI::dbExecute(con, sql)
     DBI::dbExecute(con, "DROP TABLE temp_measurement")
@@ -497,7 +595,8 @@ db_update_measurement_edit <- function(con, dataframe){
 #' This function applies both measurement edits and correction periods in a single database transaction. If any part of the process fails, the entire transaction is rolled back to maintain data integrity.
 #'
 #' @param con DBI Connection
-#' @param measurement_edit data.frame with columns ts, sensor_id, value, value_corr and value_edit (can be NULL if no measurement edit)
+#' @param correction_type int Define correction type applied to raw data
+#' @param measurement_edit data.frame with columns ts, sensor_id, value
 #' @param correction_period data.frame with columns sensor_id, author_id, ts_start, ts_end, correction_type, value, comment (can be NULL if no correction period)
 #'
 #' @importFrom DBI dbBegin dbCommit dbRollback
@@ -505,14 +604,14 @@ db_update_measurement_edit <- function(con, dataframe){
 #'
 #' @return character Message indicating the result of the operation
 #' @export
-db_apply_edit_with_correction <- function(con, measurement_edit, correction_period) {
+db_apply_edit_with_correction <- function(con, correction_type, measurement_edit, correction_period) {
 
   DBI::dbBegin(con)
 
   tryCatch({
 
     if (!is.null(measurement_edit)) {
-      db_update_measurement_edit(con, measurement_edit)
+      db_update_measurement_edit(con, correction_type, measurement_edit)
     }
 
     db_update_correction(con, correction_period)
