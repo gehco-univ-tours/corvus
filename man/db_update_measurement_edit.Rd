@@ -9,6 +9,8 @@ db_update_measurement_edit(con, correction_type, dataframe)
 \arguments{
 \item{con}{DBI Connection}
 
+\item{correction_type}{integer correction applied to edited data}
+
 \item{dataframe}{data.frame with columns ts, sensor_id, value}
 }
 \value{

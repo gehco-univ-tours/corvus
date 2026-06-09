@@ -16,7 +16,12 @@ data_prepare_edit_and_correction(
   drift = NULL,
   delete_threshold = NULL,
   set_value = NULL,
-  median_interval = NULL
+  median_interval = NULL,
+  loess_span = NULL,
+  hampel_interval = NULL,
+  hampel_value = NULL,
+  mean_interval = NULL,
+  tsclean_iteration = NULL
 )
 }
 \arguments{
@@ -41,6 +46,16 @@ data_prepare_edit_and_correction(
 \item{delete_threshold}{numeric: threshold value to consider a value as deleted for correction type 3 (delete)}
 
 \item{set_value}{numeric: value to set for correction type 4 (set value correction)}
+
+\item{median_interval}{numeric: time interval to calculate median (min)}
+
+\item{loess_span}{numeric: loess span from 0 to 1}
+
+\item{hampel_interval}{numeric: Hampel filter time interval (min)}
+
+\item{hampel_value}{numeric: Hampel threshold value to set median value instead of raw data}
+
+\item{mean_interval}{numeric: rolling mean time interval (min)}
 }
 \value{
 list with measurement_edit data frame and correction_period data frame

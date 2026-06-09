@@ -13,6 +13,7 @@ Imports:
     dplyr,
     DT,
     dygraphs,
+    forecast,
     glue,
     golem (>= 0.4.1),
     leaflet,

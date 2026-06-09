@@ -318,7 +318,6 @@ db_get_measurement_raw <- function(con, sensor_id, min_date, max_date){
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
     mutate(ts = as.POSIXct(ts, tz = 'UTC'))
-    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -345,7 +344,6 @@ db_get_measurement_corr <- function(con, sensor_id, min_date, max_date){
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
     mutate(ts = as.POSIXct(ts, tz = 'UTC'))
-    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -381,7 +379,6 @@ db_get_measurement_raw_corr <- function(con, sensor_id, min_date, max_date){
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
     mutate(ts = as.POSIXct(ts, tz = 'UTC'))
-    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -408,7 +405,6 @@ db_get_measurement_filter <- function(con, sensor_id, min_date, max_date){
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, min_date = min_date, max_date = max_date)
   data <- dbGetQuery(con, query) %>%
     mutate(ts = as.POSIXct(ts, tz = 'UTC'))
-    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -436,7 +432,6 @@ db_get_fieldwork_data <- function(con, station_id, start_date, end_date){
   query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)
   data <- dbGetQuery(con, query) %>%
     mutate(ts = as.POSIXct(ts, tz = 'UTC'))
-    # mutate(ts = with_tz(ts, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -464,8 +459,6 @@ db_get_validated_period_data <- function(con, sensor_id, start_date, end_date){
   data <- dbGetQuery(con, query) %>%
     mutate(ts_start = as.POSIXct(ts_start, tz = 'UTC')) %>%
     mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC'))
-    # mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
-    # mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -494,8 +487,6 @@ db_get_deleted_period_data <- function(con, sensor_id, start_date, end_date){
   data <- dbGetQuery(con, query) %>%
     mutate(ts_start = as.POSIXct(ts_start, tz = 'UTC')) %>%
     mutate(ts_end = as.POSIXct(ts_end, tz = 'UTC'))
-    # mutate(ts_start = with_tz(ts_start, tzone = Sys.timezone())) %>%
-    # mutate(ts_end = with_tz(ts_end, tzone = Sys.timezone()))
   return(data)
 }
 
@@ -514,7 +505,7 @@ db_update_correction <- function(con, dataframe) {
   stopifnot(
     is.data.frame(dataframe),
     all(c("ts_corr", "sensor_id", "author_id", "ts_start", "ts_end", "correction_type",
-      "value", "comment"
+      "value1", "value2", "comment"
     ) %in% names(dataframe))
   )
 
@@ -524,9 +515,9 @@ db_update_correction <- function(con, dataframe) {
 
     sql <- glue::glue("
       INSERT INTO correction (ts_corr, sensor_id, author_id, ts_start, ts_end,
-        correction_type, value, comment)
+        correction_type, value1, value2, comment)
       SELECT
-        ts_corr,sensor_id, author_id, ts_start, ts_end, correction_type, value, comment
+        ts_corr,sensor_id, author_id, ts_start, ts_end, correction_type, value1, value2, comment
       FROM temp_correction")
     rows <- DBI::dbExecute(con, sql)
     DBI::dbExecute(con, "DROP TABLE temp_correction")
@@ -541,6 +532,7 @@ db_update_correction <- function(con, dataframe) {
 #' Update measurement_corr table with edited values
 #'
 #' @param con DBI Connection
+#' @param correction_type integer correction applied to edited data
 #' @param dataframe data.frame with columns ts, sensor_id, value
 #'
 #' @importFrom DBI dbWriteTable dbExecute

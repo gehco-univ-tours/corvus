@@ -7,7 +7,8 @@
 data_get_correction_period(
   dataframe,
   sensor_id,
-  value,
+  value1,
+  value2,
   author_id,
   correction_type,
   comment
@@ -18,7 +19,9 @@ data_get_correction_period(
 
 \item{sensor_id}{integer: sensor id}
 
-\item{value}{numeric: offset value to consider a value as corrected}
+\item{value1}{numeric: tool parameter1}
+
+\item{value2}{numeric: tool parameter2}
 
 \item{author_id}{integer: author id}
 

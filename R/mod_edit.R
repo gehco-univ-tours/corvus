@@ -150,6 +150,7 @@ mod_edit_ui <- function(id){
 #' @importFrom slider slide_index_dbl
 #' @importFrom stats predict
 #' @importFrom DT datatable renderDataTable
+#' @importFrom forecast tsclean
 mod_edit_server <- function(id, con, r_globals){
   moduleServer(id, function(input, output, session){
     ns <- session$ns
@@ -684,26 +685,44 @@ mod_edit_server <- function(id, con, r_globals){
         output$value_edit2_ui <- renderUI({
           NULL
         })
-      # } else if (input$correction == 6){ # loess filter
-      #   output$value_edit_ui <- renderUI({
-      #     numericInput(inputId = ns("loess_span"),
-      #                  label = "Loess span",
-      #                  value = 0.1)
-      #   })
-      #   output$value_edit2_ui <- renderUI({
-      #     NULL
-      #   })
-      # } else if (input$correction == 7){ # Hampel interval
-      #   output$value_edit_ui <- renderUI({
-      #     numericInput(inputId = ns("hampel_interval"),
-      #                  label = "Filter interval (min)",
-      #                  value = 15)
-      #   })
-      #   output$value_edit2_ui <- renderUI({ # Hampel filter
-      #     numericInput(inputId = ns("hampel_value"),
-      #                  label = "Hampel k",
-      #                  value = 3)
-      #   })
+      } else if (input$correction == 6){ # loess filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("loess_span"),
+                       label = "Loess span",
+                       value = 0.1)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 7){ # Hampel interval
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("hampel_interval"),
+                       label = "Filter interval (min)",
+                       value = 15)
+        })
+        output$value_edit2_ui <- renderUI({ # Hampel filter
+          numericInput(inputId = ns("hampel_value"),
+                       label = "Hampel k",
+                       value = 3)
+        })
+      } else if (input$correction == 8){ # mean filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("mean_interval"),
+                       label = "Filter interval (min)",
+                       value = 15)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 9){ # tsclean filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("tsclean_iteration"),
+                       label = "Number of iteration",
+                       value = 2)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
       } else {
         output$value_edit_ui <- renderUI({
           NULL
@@ -754,23 +773,56 @@ mod_edit_server <- function(id, con, r_globals){
             .complete = FALSE
           ))
       }
-      # if (input$correction == 6){ # loess filter
-      #   r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-      #     dplyr::mutate(value = predict(
-      #       loess(value ~ as.numeric(ts), span = input$loess_span)
-      #     ))
-      # }
-      # if (input$correction == 7){ # Hampel filter
-      #   r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-      #     dplyr::mutate(value = slide_index_dbl(
-      #       value,
-      #       .i = ts,
-      #       .f = ~ data_hampel_filter (.x, k = input$hampel_value),
-      #       .before = seconds(input$hampel_interval*60),
-      #       .after = 0,
-      #       complete = FALSE
-      #     ))
-      # }
+      if (input$correction == 6){ # loess filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = predict(
+            loess(value ~ as.numeric(ts), span = input$loess_span)
+          ))
+      }
+      if (input$correction == 7){ # Hampel filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          mutate(
+            value = slide_index_dbl(
+              value,
+              ts,
+              .before = seconds(input$hampel_interval*60),
+              .after = 0,  # causal
+              .f = function(x) {
+                med <- median(x)
+                mad_val <- max(mad(x, constant = 1.4826), 1e-6)
+                x0 <- x[length(x)]
+
+                if (abs(x0 - med) > 3 * mad_val) med else x0
+              }
+            )
+          )
+          # dplyr::mutate(value = slide_index_dbl(
+          #   value,
+          #   .i = ts,
+          #   .f = ~ data_hampel_filter (.x, k = input$hampel_value),
+          #   .before = seconds(input$hampel_interval*60),
+          #   .after = seconds(input$hampel_interval*60),
+          #   complete = FALSE
+          # ))
+      }
+      if (input$correction == 8){ # mean filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = slide_index_dbl(
+            value,
+            .i = ts,
+            .f = mean,
+            .before = seconds(input$mean_interval/2*60),
+            .after = seconds(input$mean_interval/2*60),
+            .complete = FALSE
+          ))
+      }
+
+      if (input$correction == 9){ # tsclean filter
+        ts_data <- ts(r_locals$data$measurement_edit$value, frequency = 1)
+        r_locals$data$measurement_edit$value <- as.numeric(tsclean(ts_data,
+                                                                   replace.missing = FALSE,
+                                                                   iterate = input$tsclean_iteration))
+      }
 
       # plot
       if(!isTRUE(input$checkbox_measurement_edit)){
@@ -800,7 +852,12 @@ mod_edit_server <- function(id, con, r_globals){
         drift = input$drift_edit,
         delete_threshold = input$delete_threshold,
         set_value = input$set_value,
-        median_interval = input$median_interval
+        median_interval = input$median_interval,
+        loess_span = input$loess_span,
+        hampel_interval = input$hampel_interval,
+        hampel_value = input$hampel_value,
+        mean_interval = input$mean_interval,
+        tsclean_iteration = input$tsclean_iteration
       )
 
       r_locals$userinfo$db_result <- db_apply_edit_with_correction(
@@ -812,6 +869,7 @@ mod_edit_server <- function(id, con, r_globals){
 
       r_locals$data$measurement_edit <- NULL
       r_locals$data$measurement_corr <- db_get_measurement_corr(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_filter <- db_get_measurement_filter(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
       r_locals$data$deleted <- db_get_deleted_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
       shinyjs::disable("validate_edit")
       r_locals$update_plot <- r_locals$update_plot + 1

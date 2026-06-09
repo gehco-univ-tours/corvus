@@ -110,7 +110,8 @@ data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
       ts_start,
       ts_end,
       correction_type = correction_type,
-      value = delete_threshold,
+      value1 = delete_threshold,
+      value2 = NULL,
       comment = comment
     )
   return(data)
@@ -120,7 +121,8 @@ data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
 #'
 #' @param dataframe data.frame: data frame with ts, value columns
 #' @param sensor_id integer: sensor id
-#' @param value numeric: offset value to consider a value as corrected
+#' @param value1 numeric: tool parameter1
+#' @param value2 numeric: tool parameter2
 #' @param author_id integer: author id
 #' @param correction_type integer: correction type id
 #' @param comment character: comment
@@ -128,7 +130,7 @@ data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
 #' @importFrom dplyr summarise transmute
 #'
 #' @return data.frame
-data_get_correction_period <- function(dataframe, sensor_id, value,
+data_get_correction_period <- function(dataframe, sensor_id, value1, value2,
                                        author_id, correction_type, comment){
 
   stopifnot(
@@ -147,7 +149,8 @@ data_get_correction_period <- function(dataframe, sensor_id, value,
       ts_start,
       ts_end,
       correction_type = correction_type,
-      value = value,
+      value1 = value1,
+      value2 = value2,
       comment = comment
     )
   return(data)
@@ -168,6 +171,11 @@ data_get_correction_period <- function(dataframe, sensor_id, value,
 #' @param drift numeric: drift value to apply for correction type 2 (drift correction)
 #' @param delete_threshold numeric: threshold value to consider a value as deleted for correction type 3 (delete)
 #' @param set_value numeric: value to set for correction type 4 (set value correction)
+#' @param median_interval numeric: time interval to calculate median (min)
+#' @param loess_span numeric: loess span from 0 to 1
+#' @param hampel_interval numeric: Hampel filter time interval (min)
+#' @param hampel_value numeric: Hampel threshold value to set median value instead of raw data
+#' @param mean_interval numeric: rolling mean time interval (min)
 #'
 #' @importFrom dplyr mutate
 #'
@@ -185,7 +193,12 @@ data_prepare_edit_and_correction <- function(
     drift = NULL,
     delete_threshold = NULL,
     set_value = NULL,
-    median_interval = NULL
+    median_interval = NULL,
+    loess_span = NULL,
+    hampel_interval = NULL,
+    hampel_value = NULL,
+    mean_interval = NULL,
+    tsclean_iteration = NULL
 ) {
 
   if (correction_type == 1) { # offset
@@ -193,7 +206,8 @@ data_prepare_edit_and_correction <- function(
     correction_period <- data_get_correction_period(
       dataframe = measurement_edit,
       sensor_id = sensor_id,
-      value = offset,
+      value1 = offset,
+      value2 = NA_real_,
       author_id = author_id,
       correction_type = correction_type,
       comment = comment
@@ -205,7 +219,8 @@ data_prepare_edit_and_correction <- function(
     correction_period <- data_get_correction_period(
       dataframe = measurement_edit,
       sensor_id = sensor_id,
-      value = drift,
+      value1 = drift,
+      value2 = NA_real_,
       author_id = author_id,
       correction_type = correction_type,
       comment = comment
@@ -229,7 +244,8 @@ data_prepare_edit_and_correction <- function(
     correction_period <- data_get_correction_period(
       dataframe = measurement_edit,
       sensor_id = sensor_id,
-      value = set_value,
+      value1 = set_value,
+      value2 = NA_real_,
       author_id = author_id,
       correction_type = correction_type,
       comment = comment
@@ -241,7 +257,60 @@ data_prepare_edit_and_correction <- function(
     correction_period <- data_get_correction_period(
       dataframe = measurement_edit,
       sensor_id = sensor_id,
-      value = median_interval,
+      value1 = median_interval,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 6) { # Loess filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = loess_span,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 7) { # Hampel filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = hampel_interval,
+      value2 = hampel_value,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 8) { # Mean filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = mean_interval,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 9) { # tsclean filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = tsclean_iteration,
+      value2 = NA_real_,
       author_id = author_id,
       correction_type = correction_type,
       comment = comment
