@@ -6,7 +6,9 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
+#' @importFrom shiny NS tagList fluidPage fluidRow column selectInput
+#' @importFrom shiny actionButton uiOutput verbatimTextOutput
+#' @importFrom shinybusy add_busy_bar
 mod_database_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -53,9 +55,11 @@ mod_database_ui <- function(id){
 #' database Server Functions
 #'
 #' @noRd
+#' @importFrom shiny moduleServer renderPrint observeEvent reactiveValues
+#' @importFrom shiny renderUI req textInput selectInput
 #' @importFrom stringr str_remove
-mod_database_server <- function(id){
-  moduleServer( id, function(input, output, session){
+mod_database_server <- function(id, con, r_globals){
+  moduleServer(id, function(input, output, session){
     ns <- session$ns
 
     ### DEV TOOLS ####
@@ -75,7 +79,7 @@ mod_database_server <- function(id){
     ### REACTIVES ####
 
     r_locals <- reactiveValues(
-      userinfo = list("User information"),
+      userinfo = list(),
       table_name = NULL,
       fields = NULL
     )
@@ -89,7 +93,7 @@ mod_database_server <- function(id){
     observeEvent(input$action, {
       req(input$action)
       r_locals$table_name <- input$action
-      r_locals$fields = db_get_table_fields(r_locals$table_name, db_con())
+      r_locals$fields = db_get_table_fields(r_locals$table_name, con)
       # Station
       output$field <- renderUI({
         if (input$action == "station") {
@@ -111,8 +115,8 @@ mod_database_server <- function(id){
         }
         # sensor
         else if (input$action == "sensor"){
-          stations <- db_get_stations(db_con())
-          parameters <- db_get_parameters(db_con())
+          stations <- db_get_stations(con)
+          parameters <- db_get_parameters(con)
           lapply(r_locals$fields, function(field) {
             if (field == "station_id") {
               selectInput(ns(field), label = field, choices = stations)
@@ -129,7 +133,7 @@ mod_database_server <- function(id){
     ### SUBMIT ACTION ####
     observeEvent(input$submit, {
       input_values <- sapply(r_locals$fields, function(field) input[[field]], simplify = FALSE)
-      r_locals$userinfo$database <- db_insert_data(db_con(), r_locals$table_name, input_values)
+      r_locals$userinfo$database <- db_insert_data(con, r_locals$table_name, input_values)
     })
   })
 }

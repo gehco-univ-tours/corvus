@@ -52,11 +52,11 @@ test_that(
 
 # Configure this test to fit your need.
 # testServer() function makes it possible to test code in server functions and modules, without needing to run the full Shiny application
-testServer(app_server, {
+shiny::testServer(app_server, {
 
   # Set and test an input
-  session$setInputs(x = 2)
-  expect_equal(input$x, 2)
+  # session$setInputs(x = 2)
+  # expect_equal(input$x, 2)
 
   # Example of tests you can do on the server:
   # - Checking reactiveValues

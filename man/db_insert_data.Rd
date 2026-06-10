@@ -4,10 +4,10 @@
 \alias{db_insert_data}
 \title{Insert data into a table}
 \usage{
-db_insert_data(db_conn, table_name, input_values)
+db_insert_data(db_con, table_name, input_values)
 }
 \arguments{
-\item{db_conn}{PqConnection: database connection}
+\item{db_con}{PqConnection: database connection}
 
 \item{table_name}{character: table name}
 

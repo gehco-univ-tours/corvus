@@ -14,6 +14,9 @@ run_app <- function(
   uiPattern = "/",
   ...
 ) {
+  Sys.setenv(TZ = "UTC")
+
+
   with_golem_options(
     app = shinyApp(
       ui = app_ui,

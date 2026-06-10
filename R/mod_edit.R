@@ -6,11 +6,13 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
-#' @importFrom plotly plotlyOutput
+#' @importFrom shiny NS tagList fluidPage fluidRow column selectInput
+#' @importFrom shiny actionButton sliderInput verbatimTextOutput renderPrint
+#' @importFrom dygraphs dygraphOutput
 #' @importFrom shinybusy add_busy_bar
 #' @importFrom shinyWidgets switchInput timeInput
 #' @importFrom shinyjs useShinyjs
+#' @importFrom DT dataTableOutput
 mod_edit_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -18,21 +20,19 @@ mod_edit_ui <- function(id){
       useShinyjs(),  # Initialize shinyjs
       fluidRow(
         add_busy_bar(color = "#FF0000"),
-        plotlyOutput(ns("plot")),
-        uiOutput(ns("date_ui"))
-      ),
-      fluidRow(
         column(
           width = 2,
-          checkboxInput(inputId = ns("plot_corr_data"),
-                        label = "Plot corr data",
-                        value = FALSE)
+          uiOutput(ns("checkbox_measurement_raw_ui")),
+          uiOutput(ns("checkbox_measurement_corr_ui")),
+          uiOutput(ns("checkbox_measurement_filter_ui")),
+          uiOutput(ns("checkbox_measurement_edit_ui")),
+          uiOutput(ns("checkbox_measurement_add_ui")),
+          uiOutput(ns("checkbox_fieldwork_ui")),
+          uiOutput(ns("checkbox_deleted_period_ui"))
         ),
         column(
-          width = 2,
-          checkboxInput(inputId = ns("plot_field"),
-                        label = "Plot plot_field",
-                        value = FALSE)
+          width = 10,
+        dygraphOutput(ns("plot"))
         )
       ),
       fluidRow(
@@ -40,31 +40,36 @@ mod_edit_ui <- function(id){
           width = 2,
           selectInput(inputId = ns("station"),
                       label = "Stations",
-                      choices = db_get_stations(db_con()))
-        ),
-        column(
-          width = 2,
-          selectInput(inputId = ns("parameter"),
-                      label = "Parameter",
                       choices = NULL)
         ),
-        # column(
-        #   width = 2,
-        #   dateRangeInput(inputId = ns("date"),
-        #                  label = "Date",
-        #                  # actual date - 1 month
-        #                  start =  Sys.Date() - 180,
-        #                  end =  Sys.Date()
-        #                  )
-        # ),
         column(
           width = 2,
+          selectInput(inputId = ns("parameter_tocorr"),
+                      label = "Parameter to correct",
+                      choices = NULL)
+        ),
+        column(
+          width = 2,
+          selectInput(inputId = ns("parameter_add"),
+                      label = "Parameter additional",
+                      choices = NULL)
+        ),
+        column(
           tags$div(style = "margin-top: 30px;"),
-          actionButton(inputId = ns("plot_raw_data"),
-                       label = "Plot raw data"),
-          tags$div(style = "margin-bottom: 20px;")
+          width = 2,
+          actionButton(inputId = ns("plot_bttn"),
+                       label = "Plot")
         ),
       ), # fluidRow
+      fluidRow(
+        column(
+          width = 12,
+          uiOutput(ns("date_ui"))
+        )
+      ),
+      fluidRow(
+        DT::dataTableOutput(ns("fieldwork_table"))
+      ),
       tags$hr(), # add horizontal line
       #### Edition mode UI ####
       fluidRow(
@@ -77,29 +82,32 @@ mod_edit_ui <- function(id){
           uiOutput(ns("author_ui"))
         ),
         column(
-          width = 4,
-          uiOutput(ns("date_edit_ui")),
+          width = 3,
           fluidRow(
             column(
-              width = 6,
-              uiOutput(ns("time_datestart_edit_ui"))
+              width = 4,
+              uiOutput(ns("set_start_date_ui"))
             ),
             column(
-              width = 6,
-              uiOutput(ns("time_dateend_edit_ui"))
+              width = 4,
+              uiOutput(ns("set_end_date_ui"))
             ),
-          ),
+            column(
+              width = 4,
+              uiOutput(ns("reset_start_end_date_ui"))
+            )
+          )
         ),
         column(
           width = 3,
-          uiOutput(ns("value_offset_ui")),
-          uiOutput(ns("value_drift_ui")),
+          uiOutput(ns("value_edit_ui")),
+          uiOutput(ns("value_edit2_ui")),
           uiOutput(ns("plot_edit_ui")),
           tags$div(style = "margin-top: 20px;"),
           uiOutput(ns("validate_edit_ui"))
         ),
         column(
-          width = 3,
+          width = 4,
           uiOutput(ns("comment_ui"))
         )
       ), # fluidRow
@@ -131,21 +139,25 @@ mod_edit_ui <- function(id){
 #' edit Server Functions
 #'
 #' @noRd
-#' @importFrom plotly renderPlotly plotlyProxy plotlyProxyInvoke
+#' @importFrom shiny moduleServer observeEvent renderUI updateSelectInput
+#' @importFrom shiny selectInput actionButton sliderInput verbatimTextOutput
+#' @importFrom shiny renderPrint req reactiveValues checkboxInput
+#' @importFrom shiny updateCheckboxInput textAreaInput numericInput
+#' @importFrom dygraphs renderDygraph dyEvent dyShading
 #' @importFrom shinyjs disable enable hide show
-#' @importFrom dplyr mutate
-#' @importFrom lubridate hm ymd ymd_hm
-mod_edit_server <- function(id, r_globals){
+#' @importFrom dplyr mutate filter arrange group_by summarise transmute
+#' @importFrom lubridate hm ymd ymd_hm seconds
+#' @importFrom slider slide_index_dbl
+#' @importFrom stats predict
+#' @importFrom DT datatable renderDataTable
+#' @importFrom forecast tsclean
+mod_edit_server <- function(id, con, r_globals){
   moduleServer(id, function(input, output, session){
     ns <- session$ns
 
     ### DEV TOOLS ####
     output$printcheck = renderPrint({
       tryCatch({
-        # event_data("plotly_hover")
-        print(paste0("keep_corr_plot_layer = ", r_locals$keep_corr_plot_layer))
-        print(paste0("input$plot_raw_data = ", input$plot_raw_data))
-        print(input$data)
         print("exists")
       },
       shiny.silent.error = function(e) {
@@ -160,45 +172,72 @@ mod_edit_server <- function(id, r_globals){
     ### REACTIVES ####
 
     r_locals <- reactiveValues(
-      start_date_slider = TRUE,
-      start_plot = TRUE,
-      sensor_id = NULL,
+      station_code = NULL,
+      station_name = NULL,
       station_parameters = NULL,
-      parameter = NULL,
-      parameter_name = NULL,
-      measurement = NULL,
-      measurement_filter = NULL,
-      min_max_date = NULL,
-      date_min = NULL,
-      date_max = NULL,
-      plot_update = 0,
-      date_slider_update = 0,
-      plot_field = NULL,
-      plot = NULL,
-      keep_corr_plot_layer = FALSE,
-      plot_layer = NULL,
-      corr_plot = FALSE,
-      edit_plot = FALSE,
-      userinfo = list("User information"),
-      edit_data = NULL,
-      start_datetime_edit = NULL,
-      end_datetime_edit = NULL
+      parameter_tocorr = NULL,
+      parameter_tocorr_name = NULL,
+      paramter_tocorr_unit = NULL,
+      parameter_add = NULL,
+      parameter_add_name = NULL,
+      parameter_add_unit = NULL,
+      sensor_id_tocorr = NULL,
+      sensor_id_add = NULL,
+      parameter_tocorr_update = 0,
+      parameter_add_update = 0,
+      data = list(
+        measurement_raw = NULL,
+        measurement_corr = NULL,
+        measurement_filter = NULL,
+        measurement_edit = NULL,
+        measurement_add = NULL,
+        fieldwork = NULL,
+        validated = NULL,
+        deleted = NULL
+      ),
+      checkbox_graph = list(
+        measurement_raw = TRUE,
+        measurement_corr = FALSE,
+        measurement_filter = FALSE,
+        measurement_add = FALSE,
+        measurement_edit = FALSE,
+        fieldwork = FALSE,
+        deleted_period = FALSE,
+        correction_period = FALSE,
+        validated_period = FALSE
+      ),
+      update_plot = 0,
+      trigger_checkbox_update = 0,
+      data_ready = FALSE,
+      dygraph = NULL,
+      fieldwork_table = NULL,
+      start_or_end = NULL,
+      start_date = NULL,
+      end_date = NULL,
+      userinfo = list()
     )
 
     ### INIT ####
-    shinyjs::disable("plot_corr_data")
-    shinyjs::disable("plot_field")
-    shinyjs::disable("plot_edit")
 
-    ### UI OUTPUT ####
+    #### UI output ####
 
-    #### plot ####
+    output$date_ui <- renderUI({
+      req(con)
 
-    output$plot <- renderPlotly({
-      r_locals$plot
+      limits <- db_min_max_date(con)
+
+      sliderInput(
+        inputId = session$ns("date"),
+        label = "",
+        min = limits$min,
+        max = limits$max,
+        value = c(limits$max - 180, limits$max),
+        timeFormat = "%Y-%m-%d",
+        width = "100%",
+        timezone = "UTC"
+      )
     })
 
-    #### userinfo ####
     output$userinfo <- renderPrint({
       r_locals$userinfo
     })
@@ -207,179 +246,304 @@ mod_edit_server <- function(id, r_globals){
 
     #### UI ####
     # update input$station if r_globals$station is not NULL
-    observeEvent(r_globals$station, {
-      updateSelectInput(session, "station", selected = r_globals$station)
+
+    observeEvent(r_globals$all_stations, {
+      updateSelectInput(
+        session,
+        inputId = "station",
+        choices = db_get_stations(con)
+      )
     })
 
     #### Station ####
+
     observeEvent(input$station, {
       req(input$station)
-
-      # update r_globals$station
-      if (is.null(r_globals$station) || input$station != r_globals$station$id) {
-        r_globals$station <- r_globals$all_stations[r_globals$all_stations$id == input$station,]
-      }
-
-      # get all parameters for the station and update parameter UI
-      r_locals$station_parameters <- db_get_station_parameters(db_con(), r_globals$station$id)
-      updateSelectInput(session, "parameter",
-                        choices = r_locals$station_parameters)
-      r_locals$parameter <- r_locals$station_parameters[1]
-      r_locals$parameter_name <- names(which(r_locals$station_parameters == r_locals$parameter))
+      r_locals$station_code <- r_globals$all_stations$code[r_globals$all_stations$id == input$station]
+      r_locals$station_name <- r_globals$all_stations$name[r_globals$all_stations$id == input$station]
+      r_locals$station_parameters <- db_get_station_parameters(con, input$station)
+      updateSelectInput(session, "parameter_tocorr", choices = r_locals$station_parameters)
+      updateSelectInput(session, "parameter_add", choices = r_locals$station_parameters)
+      r_locals$parameter_tocorr <- r_locals$station_parameters[1]
+      r_locals$parameter_add <- r_locals$station_parameters[1]
 
       # force sensor_id event if same input$parameter as previous station
-      if (r_locals$parameter == input$parameter){
-        r_locals$parameter_update = r_locals$parameter_update + 1
+      if (r_locals$parameter_tocorr == input$parameter_tocorr){
+        r_locals$parameter_tocorr_update = r_locals$parameter_tocorr_update + 1
       }
 
-      # User info
-      r_locals$userinfo$station <- glue::glue("Station ID: {r_globals$station$id}")
+      # force sensor_id event if same input$parameter as previous station
+      if (r_locals$parameter_add == input$parameter_add){
+        r_locals$parameter_add_update = r_locals$parameter_add_update + 1
+      }
+
+      # userinfo
+      r_locals$userinfo$station_code <- r_locals$station_code
+
+      print("Station")
     })
 
-    #### Parameter ####
-    observeEvent(list(input$parameter, r_locals$parameter_update), {
-      req(input$parameter)
-      r_locals$sensor_id <- db_get_sensor_id(db_con(), input$station, input$parameter)
+    #### Parameter to correct ####
 
-      # user info
-      r_locals$userinfo$parameter_id <- glue::glue("Parameter id: {input$parameter}")
-      r_locals$userinfo$sensor_id <- glue::glue("Sensor id: {r_locals$sensor_id}")
+    observeEvent(list(input$parameter_tocorr, r_locals$parameter_tocorr_update), {
+      req(input$parameter_tocorr)
+      r_locals$parameter_tocorr <- input$parameter_tocorr
+      r_locals$parameter_tocorr_name <-  names(which(r_locals$station_parameters == input$parameter_tocorr))
+      r_locals$parameter_tocorr_unit <- db_get_parameter_unit(con, input$parameter_tocorr)
+
+      r_locals$sensor_id_tocorr <- db_get_sensor_id(con, input$station, input$parameter_tocorr)
+
+      # userinfo
+      r_locals$userinfo$parameter_tocorr_name <- r_locals$parameter_tocorr_name
+      r_locals$userinfo$sensor_id_tocorr <- r_locals$sensor_id_tocorr
+
+      print("Parameter to correct")
+    })
+
+    #### Parameter additional ####
+
+    observeEvent(list(input$parameter_add, r_locals$parameter_add_update), {
+      req(input$parameter_add)
+      r_locals$parameter_add <- input$parameter_add
+      r_locals$parameter_add_name <-  names(which(r_locals$station_parameters == input$parameter_add))
+      r_locals$parameter_add_unit <- db_get_parameter_unit(con, input$parameter_add)
+
+      r_locals$sensor_id_add <- db_get_sensor_id(con, input$station, input$parameter_add)
+
+      # userinfo
+      r_locals$userinfo$parameter_add_name <- r_locals$parameter_add_name
+      r_locals$userinfo$sensor_id_add <- r_locals$sensor_id_add
+
+      print("Parameter additional")
     })
 
     #### Plot bttn ####
-    observeEvent(input$plot_raw_data, {
-      print("input$plot_raw_data")
 
-      shinyjs::enable("plot_corr_data")
-      shinyjs::enable("plot_edit")
-      shinyjs::enable("plot_field")
+    observeEvent(input$plot_bttn, {
 
-      # set input$plot_corr_data and input$plot_edit to FALSE before new plot
-      if (input$plot_corr_data == TRUE){
-        r_locals$keep_corr_plot_layer = TRUE
-        updateCheckboxInput(session, "plot_corr_data", value = FALSE)
-      }
+      r_locals$data_ready <- FALSE
 
-      # check if input$plot_edit exist then remove the trace if is TRUE
-      if (!is.null(input$plot_edit) && input$plot_edit == TRUE){
-        updateCheckboxInput(session, "plot_edit", value = FALSE)
-      }
+      req(r_locals$sensor_id_tocorr)
+      req(r_locals$sensor_id_add)
 
-      min_max_date <- db_min_max_date(db_con(), r_locals$sensor_id)
+      # get data
+      r_locals$data$measurement_raw <- db_get_measurement_raw(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_corr <- db_get_measurement_corr(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_filter <- db_get_measurement_filter(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_add <- db_get_measurement_raw_corr(con, r_locals$sensor_id_add, input$date[1], input$date[2])
+      r_locals$data$fieldwork <- db_get_fieldwork_data(con, input$station, input$date[1], input$date[2])
+      r_locals$data$deleted <- db_get_deleted_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
 
-      output$date_ui <- renderUI({
-        sliderInput(ns("date"),
-                    "",
-                    min = min_max_date$min,
-                    max = min_max_date$max,
-                    value = c(min_max_date$max - 180, min_max_date$max),
-                    timeFormat="%Y-%m-%d",
-                    width = "100%",
-                    timezone = Sys.timezone())
+      # update checkbox UI
+      output$checkbox_measurement_raw_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_raw"),
+                      label = paste("Raw data (", r_locals$parameter_tocorr_name, ")", sep = ""),
+                      value = TRUE)
+      })
+      output$checkbox_measurement_corr_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_corr"),
+                      label = paste("Corrected data (", r_locals$parameter_tocorr_name, ")", sep = ""),
+                      value = FALSE)
+      })
+      output$checkbox_measurement_filter_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_filter"),
+                      label = paste("Filtered data (", r_locals$parameter_tocorr_name, ")", sep = ""),
+                      value = FALSE)
+      })
+      output$checkbox_measurement_edit_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_edit"),
+                      label = paste("Edited data (", r_locals$parameter_tocorr_name, ")", sep = ""),
+                      value = FALSE)
+      })
+      output$checkbox_measurement_add_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_measurement_add"),
+                      label = paste("Additional data (", r_locals$parameter_add_name, ")", sep = ""),
+                      value = FALSE)
+      })
+      output$checkbox_fieldwork_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_fieldwork"),
+                      label = "Fieldwork",
+                      value = FALSE)
+      })
+      output$checkbox_deleted_period_ui <- renderUI({
+        checkboxInput(inputId = ns("checkbox_deleted_period"),
+                      label = "Deleted period",
+                      value = FALSE)
       })
 
-      r_locals$measurement <- db_get_measurement(db_con(), r_locals$sensor_id,
-                                                 min_max_date$min, min_max_date$max)
+      # reset start and end editing
+      r_locals$start_or_end = NULL
+      r_locals$start_date = NULL
+      r_locals$end_date = NULL
 
-      print("input$plot_raw_data_end")
+      # reset measurement edit
+      r_locals$data$measurement_edit = NULL
 
-      # r_locals$measurement_filter <- r_locals$measurement %>%
-      #   filter(timestamp >= r_locals$date_min & timestamp <= r_locals$date_max)
-      #
-      # r_locals$plot <- plot_main(data = r_locals$measurement_filter,
-      #                            y = "value",
-      #                            y_title = r_locals$parameter_name)
+      r_locals$data_ready <- TRUE
 
-      # redraw corr plot if input$plot_corr_data was TRUE
-      # if (r_locals$keep_corr_plot_layer == TRUE){
-      #   updateCheckboxInput(session, "plot_corr_data", value = TRUE)
-      #   r_locals$keep_corr_plot_layer <- FALSE
-      # }
+      r_locals$trigger_checkbox_update <- r_locals$trigger_checkbox_update +1
+
+      print("Plot bttn")
 
     })
 
-    #### Date slider ####
-    observeEvent(input$date, {
-      req(input$date, r_locals$measurement)
-      print("input$date")
+    #### Checkboxes ####
 
-      r_locals$measurement_filter <- r_locals$measurement %>%
-        filter(timestamp >= input$date[1] & timestamp <= input$date[2])
+    observeEvent(list(input$checkbox_measurement_raw,
+                      input$checkbox_measurement_corr,
+                      input$checkbox_measurement_filter,
+                      input$checkbox_measurement_add,
+                      input$checkbox_measurement_edit,
+                      input$checkbox_fieldwork,
+                      input$checkbox_deleted_period,
+                      r_locals$trigger_checkbox_update
+                      ), ignoreInit = TRUE, {
 
-      r_locals$plot_update <- r_locals$plot_update+1
+                        req(r_locals$data_ready)
 
-      # user info
-      r_locals$userinfo$date <- glue::glue("Date: {input$date}")
-    })
+                        req(
+                          !is.null(input$checkbox_measurement_raw),
+                          !is.null(input$checkbox_measurement_corr),
+                          !is.null(input$checkbox_fieldwork)
+                        )
 
-    #### update plot ####
-    observeEvent(r_locals$plot_update, {
-      print("plot_update")
+      r_locals$checkbox_graph$measurement_raw <- input$checkbox_measurement_raw
+      r_locals$checkbox_graph$measurement_corr <- input$checkbox_measurement_corr
+      r_locals$checkbox_graph$measurement_filter <- input$checkbox_measurement_filter
+      r_locals$checkbox_graph$measurement_add <- input$checkbox_measurement_add
+      r_locals$checkbox_graph$measurement_edit <- input$checkbox_measurement_edit
 
-      if (r_locals$start_plot == TRUE){
-        r_locals$plot <- plot_main(data = r_locals$measurement_filter,
-                                   y = "value",
-                                   y_title = r_locals$parameter_name,
-                                   date_min = input$date[1],
-                                   date_max = input$date[2])
-        r_locals$start_plot <- FALSE
+      r_locals$checkbox_graph$fieldwork <- input$checkbox_fieldwork
+      r_locals$checkbox_graph$deleted_period <- input$checkbox_deleted_period
+
+      if(isTRUE(r_locals$checkbox_graph$fieldwork)){
+        r_locals$fieldwork_table <- DT::datatable(
+          data = r_locals$data$fieldwork
+        )
       } else {
-        # application already started : update plot
-        proxy_plot <- plot_update_main(r_locals$measurement_filter, "value", r_locals$parameter_name,
-                                       date_min = input$date[1],
-                                       date_max = input$date[2])
-
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 0) %>%
-          plotlyProxyInvoke("addTraces", proxy_plot$trace, 0) %>%
-          plotlyProxyInvoke("relayout", proxy_plot$layout, 0)
-        print("plot_update_main")
+        r_locals$fieldwork_table <- NULL
       }
 
-      if (r_locals$keep_corr_plot_layer == TRUE){
-        updateCheckboxInput(session, "plot_corr_data", value = TRUE)
-        r_locals$keep_corr_plot_layer <- FALSE
-      }
+      r_locals$update_plot = r_locals$update_plot + 1
 
-    }, ignoreInit=TRUE)
-
-    #### Plot corr data bttn ####
-    observeEvent(input$plot_corr_data, {
-
-      if (input$plot_corr_data == TRUE){
-        plot_corr <- plot_add_corr_trace(data = r_locals$measurement,
-                                       y = "value",
-                                       y_label = r_locals$parameter_name)
-
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("addTraces", plot_corr, 0) # z-index = 0 to be below valid data
-
-      } else {
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 0)
-      }
+      print("Checkboxes")
     })
 
-    #### Plot plot_field bttn ####
-    observeEvent(input$plot_field, {
+    #### Save date zoom range ####
 
-      if (input$plot_field == TRUE){
+    observeEvent(input$plot_date_window, ignoreInit = TRUE, {
 
-        r_locals$plot_field <- db_get_field(con = db_con(),
-                                            station_id = r_globals$station$id,
-                                            start_date = input$date[1],
-                                            end_date = input$date[2])
-
-        plot_field <- plot_field_lines(as.POSIXct(r_locals$plot_field[["timestamp"]]))
-
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("relayout",  plot_field)
-
-      } else {
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("relayout",  list(shapes = NULL))
-      }
+      r_locals$date_zoom_range <- input$plot_date_window
     })
+
+    #### Update plot ####
+
+    observeEvent(r_locals$update_plot, {
+      req(r_locals$data$measurement_raw, r_locals$data$measurement_corr,
+          r_locals$data$measurement_filter, r_locals$data$measurement_add,
+          r_locals$data$fieldwork, r_locals$data$deleted)
+
+      r_locals$dygraph <- plot_dygraph(
+        data = r_locals$data,
+        parameter_tocorr_name = r_locals$parameter_tocorr_name,
+        parameter_add_name = r_locals$parameter_add_name,
+        display_opts = r_locals$checkbox_graph
+      )
+
+      print("Update plot")
+      })
+
+    #### Plot ####
+
+    output$plot <- renderDygraph({
+      req(r_locals$dygraph)
+
+      plot <- r_locals$dygraph
+
+      # start edit vertical line
+      if (!is.null(r_locals$start_date)) {
+        plot <- plot %>% dyEvent(r_locals$start_date, color = "red", label = "Start")
+      }
+
+      # start edit vertical line
+      if (!is.null(r_locals$end_date)) {
+        plot <- plot %>% dyEvent(r_locals$end_date, color = "blue", label = "End")
+      }
+
+      # editing zone
+      if (!is.null(r_locals$start_date) && !is.null(r_locals$end_date)) {
+        from <- min(r_locals$start_date, r_locals$end_date)
+        to   <- max(r_locals$start_date, r_locals$end_date)
+
+        plot <- plot %>% dyShading(from = from, to = to,
+                                   color = "rgba(150,150,150,0.2)")
+      }
+
+      # deleted periods (red zone)
+      if (isTRUE(r_locals$checkbox_graph$deleted_period) && !is.null(r_locals$data$deleted)) {
+        for (i in seq_len(nrow(r_locals$data$deleted))) {
+          plot <- plot %>%
+            dygraphs::dyShading(
+              from = r_locals$data$deleted$ts_start[i],
+              to   = r_locals$data$deleted$ts_end[i],
+              color = "rgba(255,0,0,0.3)"
+            )
+        }
+      }
+
+      # fieldwork (orange vertical lines)
+      if (isTRUE(r_locals$checkbox_graph$fieldwork) && !is.null(r_locals$data$fieldwork)) {
+        for (i in seq_len(nrow(r_locals$data$fieldwork))) {
+          plot <- plot %>%
+            dygraphs::dyEvent(
+              r_locals$data$fieldwork$ts[i],
+              label = "Fieldwork",
+              color = "orange"
+            )
+        }
+      }
+
+      plot
+    })
+
+    #### Click on plot ####
+
+    # set start or end editing
+    observeEvent(list(input$plot_click, input$reset_start_end_date), {
+      req(r_locals$start_or_end)
+
+      click_time <- as.POSIXct(
+          input$plot_click$x,
+          format = "%Y-%m-%dT%H:%M:%OSZ",
+          tz = "UTC"
+        )
+
+
+      if (r_locals$start_or_end == "start") {
+        r_locals$start_date <- click_time
+      }
+
+      if (r_locals$start_or_end == "end") {
+        r_locals$end_date <- click_time
+      }
+
+      r_locals$start_or_end <- NULL
+
+      if (!is.null(r_locals$start_date) && !is.null(r_locals$end_date)){
+        shinyjs::delay(100, shinyjs::enable("plot_edit"))
+      } else {
+        shinyjs::delay(100, shinyjs::disable("plot_edit"))
+        shinyjs::delay(100, shinyjs::disable("validate_edit"))
+      }
+
+      print("Click on plot")
+    })
+
+    #### Fieldwork table ####
+
+    output$fieldwork_table <-  DT::renderDataTable(
+      r_locals$fieldwork_table
+    )
 
     #### Edition mode UI ####
     observeEvent(input$edition, {
@@ -387,46 +551,41 @@ mod_edit_server <- function(id, r_globals){
         output$author_ui <- renderUI({
           selectInput(inputId = ns("author"),
                       label = "Author",
-                      choices = db_get_authors(db_con()))
+                      choices = db_get_authors(con))
         })
         output$correction_ui <- renderUI({
           selectInput(inputId = ns("correction"),
                       label = "Correction",
-                      choices = db_get_correction_type(db_con()))
+                      choices = db_get_correction_type(con))
         })
-        output$date_edit_ui <- renderUI({
-          dateRangeInput(inputId = ns("date_edit"),
-                         label = "Date",
-                         start =  input$date[1],
-                         end =  input$date[2],
-                         startview = "month",
-                         min = input$date[1],
-                         max = input$date[2])
+        output$set_start_date_ui <- renderUI({
+          actionButton(inputId = ns("set_start_date"),
+                      label = "Set start date")
         })
-        output$time_datestart_edit_ui <- renderUI({
-          timeInput(inputId = ns("time_datestart_edit"),
-                    label = "Date start time",
-                    value = "00:00")
+        output$set_end_date_ui <- renderUI({
+          actionButton(inputId = ns("set_end_date"),
+                      label = "Set end date")
         })
-        output$time_dateend_edit_ui <- renderUI({
-          timeInput(inputId = ns("time_dateend_edit"),
-                    label = "Date end time",
-                    value = "00:00")
+        output$reset_start_end_date_ui <- renderUI({
+          actionButton(inputId = ns("reset_start_end_date"),
+                       label = "Reset dates")
         })
         output$plot_edit_ui <- renderUI({
-          checkboxInput(inputId = ns("plot_edit"),
-                       label = "Plot change",
-                       value = FALSE)
+          actionButton(inputId = ns("plot_edit"),
+                       label = "Plot edit")
         })
         output$validate_edit_ui <- renderUI({
           actionButton(inputId = ns("validate_edit"),
-                       label = "Validate")
+                       label = "Validate edit")
         })
         output$comment_ui <- renderUI({
           textAreaInput(inputId = ns("comment"),
                         label = "Comment",
                         value = "")
         })
+
+        shinyjs::delay(100, shinyjs::disable("plot_edit"))
+        shinyjs::delay(100, shinyjs::disable("validate_edit"))
 
       } else {
         output$author_ui <- renderUI({
@@ -435,16 +594,19 @@ mod_edit_server <- function(id, r_globals){
         output$correction_ui <- renderUI({
           NULL
         })
-        output$date_edit_ui <- renderUI({
+        output$set_start_date_ui <- renderUI({
           NULL
         })
-        output$time_datestart_edit_ui <- renderUI({
+        output$set_end_date_ui <- renderUI({
           NULL
         })
-        output$time_dateend_edit_ui <- renderUI({
+        output$reset_start_end_date_ui <- renderUI({
           NULL
         })
         output$value_edit_ui <- renderUI({
+          NULL
+        })
+        output$value_edit2_ui <- renderUI({
           NULL
         })
         output$plot_edit_ui <- renderUI({
@@ -459,116 +621,253 @@ mod_edit_server <- function(id, r_globals){
       }
     })
 
-    ##### Edit date ####
+    ##### Set start date button ####
 
-    observeEvent(c(ymd(input$date_edit), hm(input$time_datestart_edit), hm(input$time_dateend_edit)), {
-      r_locals$start_datetime_edit <- ymd_hm(paste(input$date_edit[1], input$time_datestart_edit, sep = " "))
-      r_locals$end_datetime_edit <- ymd_hm(paste(input$date_edit[2], input$time_dateend_edit, sep = " "))
-
-      r_locals$userinfo$edition <- glue::glue("Edition from {r_locals$start_datetime_edit} to {r_locals$end_datetime_edit}")
+    observeEvent(input$set_start_date, {
+      r_locals$start_or_end = "start"
     })
+
+    ##### Set end date button ####
+
+    observeEvent(input$set_end_date, {
+      r_locals$start_or_end = "end"
+    })
+
+    ##### Reset start and end date button ####
+
+    observeEvent(input$reset_start_end_date, {
+      r_locals$start_or_end = NULL
+      r_locals$start_date = NULL
+      r_locals$end_date = NULL
+    })
+
+    ##### Enable/disable plot_edit button ####
 
     ##### Edition mode ####
     observeEvent(input$correction, {
 
       if (input$correction == 1) { # offset
 
-        output$value_offset_ui <- renderUI({
+        output$value_edit_ui <- renderUI({
           numericInput(inputId = ns("offset_edit"),
                        label = "Offset value",
                        value = 0)
         })
-        output$value_drift_ui <- renderUI({
+        output$value_edit2_ui <- renderUI({
           NULL
         })
       } else if (input$correction == 2){ # drift
-        output$value_drift_ui <- renderUI({
+        output$value_edit_ui <- renderUI({
           numericInput(inputId = ns("drift_edit"),
                        label = "Drift end value",
                        value = 0)
         })
-        output$value_offset_ui <- renderUI({
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 3){ # delete
+        output$value_edit_ui <- renderUI({
+            numericInput(inputId = ns("delete_threshold"),
+                         label = "Delete above this value",
+                         value = 0)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 4){ # set values
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("set_value"),
+                       label = "Set value",
+                       value = 0)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 5){ # median filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("median_interval"),
+                       label = "Filter interval (min)",
+                       value = 15)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 6){ # loess filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("loess_span"),
+                       label = "Loess span",
+                       value = 0.1)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 7){ # Hampel interval
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("hampel_interval"),
+                       label = "Filter interval (min)",
+                       value = 15)
+        })
+        output$value_edit2_ui <- renderUI({ # Hampel filter
+          numericInput(inputId = ns("hampel_value"),
+                       label = "Hampel k",
+                       value = 3)
+        })
+      } else if (input$correction == 8){ # mean filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("mean_interval"),
+                       label = "Filter interval (min)",
+                       value = 15)
+        })
+        output$value_edit2_ui <- renderUI({
+          NULL
+        })
+      } else if (input$correction == 9){ # tsclean filter
+        output$value_edit_ui <- renderUI({
+          numericInput(inputId = ns("tsclean_iteration"),
+                       label = "Number of iteration",
+                       value = 2)
+        })
+        output$value_edit2_ui <- renderUI({
           NULL
         })
       } else {
-        output$value_offset_ui <- renderUI({
+        output$value_edit_ui <- renderUI({
           NULL
         })
-        output$value_drift_ui <- renderUI({
+        output$value_edit2_ui <- renderUI({
           NULL
         })
       }
     })
 
-    #### Plot change ####
+    #### Plot edit ####
+
     observeEvent(input$plot_edit, {
+      req(r_locals$start_date, r_locals$end_date)
 
-      if(input$plot_edit == TRUE){
+      # get data to correct
+      r_locals$data$measurement_edit <- data_get_measurement_edit(measurement_raw = r_locals$data$measurement_raw,
+                                                                  measurement_corr = r_locals$data$measurement_corr) %>%
+        dplyr::filter(ts >= r_locals$start_date & ts <= r_locals$end_date) %>%
+        dplyr::arrange(ts)
 
-        if (input$correction == 1) { # offset
-          r_locals$edit_data <- r_locals$measurement %>%
-            filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
-            mutate(edit = value + input$offset_edit)
-        } else if (input$correction == 2) { # drift
-          r_locals$edit_data <- r_locals$measurement %>%
-            filter(timestamp >= r_locals$start_datetime_edit & timestamp <= r_locals$end_datetime_edit) %>%
-            mutate(edit = data_edit_drift(timestamp, value, input$drift_edit))
-        }
-
-        plot_edit <- plot_add_edit_trace(data = r_locals$edit_data,
-                                         y = "edit",
-                                         y_label = r_locals$parameter_name)
-
-          plotlyProxy("plot") %>%
-            plotlyProxyInvoke("addTraces", plot_edit, 2) # z-index = 2 to be above valid data
-
-      } else {
-        plotlyProxy("plot") %>%
-          plotlyProxyInvoke("deleteTraces", 2)
+      # apply correction
+      if (input$correction == 1) { # offset
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = value + input$offset_edit)
       }
+      if (input$correction == 2){ # drift
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = data_edit_drift(ts, value, input$drift_edit))
+      }
+      if (input$correction == 3){ # delete
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(
+            value = as.numeric(ifelse(value > input$delete_threshold, NA, value)))
+      }
+      if (input$correction == 4){ # set value
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = input$set_value)
+      }
+      if (input$correction == 5){ # median filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = slider::slide_index_dbl(
+            value,
+            .i = ts,
+            .f = median,
+            .before = seconds(input$median_interval/2*60),
+            .after = seconds(input$median_interval/2*60),
+            .complete = FALSE
+          ))
+      }
+      if (input$correction == 6){ # loess filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = predict(
+            loess(value ~ as.numeric(ts), span = input$loess_span)
+          ))
+      }
+      if (input$correction == 7){ # Hampel filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = slider::slide_index_dbl(
+            value,
+            .i = ts,
+            .f = ~ data_hampel_filter (.x, k = input$hampel_value),
+            .before = seconds(input$hampel_interval*60),
+            .after = seconds(input$hampel_interval*60),
+            complete = FALSE
+          ))
+      }
+      if (input$correction == 8){ # mean filter
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::mutate(value = slider::slide_index_dbl(
+            value,
+            .i = ts,
+            .f = mean,
+            .before = seconds(input$mean_interval/2*60),
+            .after = seconds(input$mean_interval/2*60),
+            .complete = FALSE
+          ))
+      }
+
+      if (input$correction == 9){ # tsclean filter
+        ts_data <- ts(r_locals$data$measurement_edit$value, frequency = 1)
+        r_locals$data$measurement_edit$value <- as.numeric(tsclean(ts_data,
+                                                                   replace.missing = FALSE,
+                                                                   iterate = input$tsclean_iteration))
+      }
+
+      # plot
+      if(!isTRUE(input$checkbox_measurement_edit)){
+        updateCheckboxInput(session, "checkbox_measurement_edit", value = TRUE)
+      } else {
+        r_locals$update_plot <- r_locals$update_plot + 1
+      }
+
+      shinyjs::enable("validate_edit")
+
+      print("Plot edit")
     })
 
     #### Validate change ####
+
     observeEvent(input$validate_edit, {
-      data <- data_update_measurement(con = db_con(),
-                                      data = r_locals$edit_data,
-                                      sensor = r_locals$sensor_id,
-                                      author = input$author,
-                                      correction_type = input$correction,
-                                      value = input$offset_edit,
-                                      comment = input$comment)
 
-      if (!is.null(data)) {
-        r_locals$userinfo$processing = data
+      prepared <- data_prepare_edit_and_correction(
+        measurement_edit = r_locals$data$measurement_edit,
+        correction_type = as.integer(input$correction),
+        sensor_id = r_locals$sensor_id_tocorr,
+        start_date = r_locals$start_date,
+        end_date = r_locals$end_date,
+        author_id = as.integer(input$author),
+        comment = input$comment,
+        offset = input$offset_edit,
+        drift = input$drift_edit,
+        delete_threshold = input$delete_threshold,
+        set_value = input$set_value,
+        median_interval = input$median_interval,
+        loess_span = input$loess_span,
+        hampel_interval = input$hampel_interval,
+        hampel_value = input$hampel_value,
+        mean_interval = input$mean_interval,
+        tsclean_iteration = input$tsclean_iteration
+      )
 
-        # set input$plot_corr_data and input$plot_edit to FALSE before new plot
-        if (input$plot_corr_data == TRUE){
-          r_locals$keep_corr_plot_layer = TRUE
-          updateCheckboxInput(session, "plot_corr_data", value = FALSE)
-        }
+      r_locals$userinfo$db_result <- db_apply_edit_with_correction(
+        con = con,
+        correction_type = as.integer(input$correction),
+        measurement_edit = prepared$measurement_edit,
+        correction_period = prepared$correction_period
+      )
 
-        if (input$plot_edit == TRUE){
-          updateCheckboxInput(session, "plot_edit", value = FALSE)
-        }
+      r_locals$data$measurement_edit <- NULL
+      r_locals$data$measurement_corr <- db_get_measurement_corr(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$measurement_filter <- db_get_measurement_filter(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      r_locals$data$deleted <- db_get_deleted_period_data(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
+      shinyjs::disable("validate_edit")
+      r_locals$update_plot <- r_locals$update_plot + 1
 
-        r_locals$measurement <- data_get_measurement(con = db_con(),
-                                                     sensor = r_locals$sensor_id,
-                                                     start_date = input$date[1],
-                                                     end_date = input$date[2])
+      print("Validated")
 
-        r_locals$plot <- plot_main(data = r_locals$measurement,
-                                   y = "value",
-                                   y_title = r_locals$parameter_name)
-
-        # redraw corr plot if input$plot_corr_data was TRUE
-        if (r_locals$keep_corr_plot_layer == TRUE){
-          updateCheckboxInput(session, "plot_corr_data", value = TRUE)
-          r_locals$keep_corr_plot_layer <- FALSE
-        }
-
-      } else {
-        r_locals$userinfo$processing <- "Fail insert edits"
-      }
     })
   })
 }

@@ -1,28 +1,3 @@
-#' Get measurement data from database
-#'
-#' @param con PqConnection: database connection
-#' @param sensor integer: sensor id
-#' #' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
-#' #' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
-#' #'
-#' #' @return data.frame
-#' #' @export
-#' #'
-#' #' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
-#' #'
-#' #' @examples
-#' #' con <- db_con()
-#' #' data_get_measurement(con, 2, "2019-01-05", "2021-12-26")
-#' data_get_measurement <- function(con, sensor, start_date, end_date){
-#'   sql <- "SELECT timestamp, value, value_corr FROM measurement WHERE timestamp >= ?start_date AND timestamp <= ?end_date
-#'     AND sensor_id = ?sensor ORDER BY timestamp;"
-#'   query <- sqlInterpolate(con, sql, start_date = start_date, end_date = end_date,
-#'                           sensor = sensor)
-#'   data <- dbGetQuery(con, query)
-#'   dbDisconnect(con)
-#'   return(data)
-#' }
-
 #' Create drift correction column to edit data frame.
 #'
 #' @param timestamp POSIXct: timestamp
@@ -41,89 +16,336 @@
 #'                   dplyr::mutate(edit = data_edit_drift(timestamp, value_corr, 5))
 data_edit_drift <- function(timestamp, value_corr, drift_value) {
 
-  # Ensure timestamps are sorted for proper calculation
   sorted_indices <- order(timestamp)
   timestamp <- timestamp[sorted_indices]
   value_corr <- value_corr[sorted_indices]
 
-  # Extract first and last point
-  first_point <- list(timestamp = timestamp[1], value_corr = value_corr[1])
-  last_point <- list(timestamp = timestamp[length(timestamp)], value_corr = value_corr[length(value_corr)])
+  t0 <- timestamp[1]
+  tN <- timestamp[length(timestamp)]
+  vN <- value_corr[length(value_corr)]
 
-  # Calculate slope and intercept without drift
-  slope <- (last_point$value_corr - first_point$value_corr) / as.numeric(difftime(last_point$timestamp,
-                                                                                  first_point$timestamp,
-                                                                                  units = "secs"))
-  intercept <- first_point$value_corr - slope * as.numeric(first_point$timestamp)
+  # écart à corriger
+  drift <- drift_value - vN
 
-  # Calculate slope and intercept with drift
-  slope_drift <- (last_point$value_corr - first_point$value_corr + drift_value) / as.numeric(difftime(last_point$timestamp,
-                                                                                                      first_point$timestamp,
-                                                                                                      units = "secs"))
-  intercept_drift <- first_point$value_corr - slope_drift * as.numeric(first_point$timestamp)
+  dt_total <- as.numeric(difftime(tN, t0, units = "secs"))
+  dt <- as.numeric(difftime(timestamp, t0, units = "secs"))
 
-  # Calculate drift_edit for each timestamp
-  drift_edit <- value_corr - (slope * as.numeric(difftime(timestamp, first_point$timestamp, units = "secs")) -
-                                slope_drift * as.numeric(difftime(timestamp, first_point$timestamp, units = "secs")))
+  # correction progressive (0 au début, drift à la fin)
+  correction <- drift * (dt / dt_total)
+
+  drift_edit <- value_corr + correction
 
   return(drift_edit)
 }
 
-#' Update measurement data into database
+# data_edit_drift <- function(timestamp, value_corr, drift_value) {
+#
+#   # Ensure timestamps are sorted for proper calculation
+#   sorted_indices <- order(timestamp)
+#   timestamp <- timestamp[sorted_indices]
+#   value_corr <- value_corr[sorted_indices]
+#
+#   # Extract first and last point
+#   first_point <- list(timestamp = timestamp[1], value_corr = value_corr[1])
+#   last_point <- list(timestamp = timestamp[length(timestamp)], value_corr = value_corr[length(value_corr)])
+#
+#   # Calculate slope and intercept without drift
+#   slope <- (last_point$value_corr - first_point$value_corr) / as.numeric(difftime(last_point$timestamp,
+#                                                                                   first_point$timestamp,
+#                                                                                   units = "secs"))
+#   intercept <- first_point$value_corr - slope * as.numeric(first_point$timestamp)
+#
+#   # Calculate slope and intercept with drift
+#   slope_drift <- (last_point$value_corr - first_point$value_corr + drift_value) / as.numeric(difftime(last_point$timestamp,
+#                                                                                                       first_point$timestamp,
+#                                                                                                       units = "secs"))
+#   intercept_drift <- first_point$value_corr - slope_drift * as.numeric(first_point$timestamp)
+#
+#   # Calculate drift_edit for each timestamp
+#   drift_edit <- value_corr - (slope * as.numeric(difftime(timestamp, first_point$timestamp, units = "secs")) -
+#                                 slope_drift * as.numeric(difftime(timestamp, first_point$timestamp, units = "secs")))
+#
+#   return(drift_edit)
+# }
+
+#' Format deleted period from deleted threshold
 #'
-#' @param con PqConnection: database connection
-#' @param data data.frame: data frame with timestamp, value_corr and edit columns
-#' @param sensor integer: sensor id
-#' @param correction_type character: correction type id
-#' @param value numeric: offset value
-#' @param author integer: author id
+#' @param dataframe data.frame: data frame with ts, value columns
+#' @param sensor_id integer: sensor id
+#' @param delete_threshold numeric: threshold value to consider a value as deleted
+#' @param author_id integer: author id
+#' @param correction_type integer: correction type id
 #' @param comment character: comment
 #'
-#' @importFrom glue glue
-#' @importFrom DBI dbSendQuery dbGetRowsAffected dbDisconnect dbWriteTable dbExecute
+#' @importFrom dplyr arrange mutate lag filter group_by summarise transmute first last
 #'
-#' @return character
+#' @return data.frame
 #' @export
-data_update_measurement <- function(con, data, sensor, author, correction_type, value, comment){
+data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
+                                     author_id, correction_type, comment){
 
-  # get first and last date
-  date_time_start <- min(data$timestamp)
-  date_time_end <- max(data$timestamp)
 
-  # Correction table
-  sql_statement_correction <- glue::glue("INSERT INTO correction(sensor_id, author_id, timestamp_start, timestamp_end,
-                                          correction_type, value, comment)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7);")
-  # Execute the SQL statement
-  result_correction <- dbSendQuery(con, sql_statement_correction,
-                        params = list(sensor, author, date_time_start, date_time_end, correction_type, value, comment))
-  # Get the number of rows affected by the query
-  rows_affected_correction <- dbGetRowsAffected(result_correction)
-  ##
-  # Upload the data frame to a temporary table in PostgreSQL
-  dbWriteTable(con, "temp_update", data, temporary = TRUE, row.names = FALSE)
+  stopifnot(
+    is.data.frame(dataframe),
+    all(c("ts", "value") %in% names(dataframe))
+  )
 
-  # Perform a single update command using a join
-  sql_statement_measurement <- glue::glue("
-    UPDATE measurement
-    SET value_corr = temp_update.edit
-    FROM temp_update
-    WHERE measurement.sensor_id = $1
-      AND measurement.timestamp = temp_update.timestamp")
+  data <- dataframe %>%
+    arrange(ts) %>%
+    mutate(
+      flag_delete = is.na(value),
+      flag_delete_clean = flag_delete %in% TRUE,
+      period_id = cumsum(flag_delete_clean != lag(flag_delete_clean, default = flag_delete_clean[1]))
+    ) %>%
+    filter(flag_delete_clean) %>%
+    group_by(period_id) %>%
+    summarise(
+      ts_start = first(ts),
+      ts_end   = last(ts),
+      .groups  = "drop"
+    ) %>%
+    transmute(
+      sensor_id = sensor_id,
+      author_id = author_id,
+      ts_start,
+      ts_end,
+      correction_type = correction_type,
+      value1 = delete_threshold,
+      value2 = NULL,
+      comment = comment
+    )
+  return(data)
+}
 
-  # Execute the SQL statement
-  result_measurement <- dbSendQuery(con, sql_statement_measurement,
-            params = list(sensor))
+#' Format correction period from edited values
+#'
+#' @param dataframe data.frame: data frame with ts, value columns
+#' @param sensor_id integer: sensor id
+#' @param value1 numeric: tool parameter1
+#' @param value2 numeric: tool parameter2
+#' @param author_id integer: author id
+#' @param correction_type integer: correction type id
+#' @param comment character: comment
+#'
+#' @importFrom dplyr summarise transmute
+#'
+#' @return data.frame
+data_get_correction_period <- function(dataframe, sensor_id, value1, value2,
+                                       author_id, correction_type, comment){
 
-  # Get the number of rows affected by the query
-  rows_affected_correction <- dbGetRowsAffected(result_measurement)
+  stopifnot(
+    is.data.frame(dataframe),
+    all(c("ts", "value") %in% names(dataframe))
+  )
 
-  # Drop the temporary table
-  dbExecute(con, "DROP TABLE temp_update")
+  data <- dataframe %>%
+    summarise(
+      ts_start = min(ts),
+      ts_end = max(ts)
+    ) %>%
+    transmute(
+      sensor_id = sensor_id,
+      author_id = author_id,
+      ts_start,
+      ts_end,
+      correction_type = correction_type,
+      value1 = value1,
+      value2 = value2,
+      comment = comment
+    )
+  return(data)
+}
 
-  dbDisconnect(con)
-  return(glue::glue("measurement table updated for {sensor} sensor id with {rows_affected_correction} rows inserted and
-                    {rows_affected_correction} rows inserted in the correction table."))
+#' Prepare edited measurement data and correction period for database update
+#'
+#' This function prepares the edited measurement data and the corresponding correction period based on the specified correction type.
+#'
+#' @param measurement_edit data.frame: data frame with ts, value columns
+#' @param correction_type integer: correction type id (1 for offset, 2 for drift, 3 for delete, 4 for set value)
+#' @param sensor_id integer: sensor id
+#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
+#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
+#' @param author_id integer: author id
+#' @param comment character: comment
+#' @param offset numeric: offset value to apply for correction type 1 (offset)
+#' @param drift numeric: drift value to apply for correction type 2 (drift correction)
+#' @param delete_threshold numeric: threshold value to consider a value as deleted for correction type 3 (delete)
+#' @param set_value numeric: value to set for correction type 4 (set value correction)
+#' @param median_interval numeric: time interval to calculate median (min)
+#' @param loess_span numeric: loess span from 0 to 1
+#' @param hampel_interval numeric: Hampel filter time interval (min)
+#' @param hampel_value numeric: Hampel threshold value to set median value instead of raw data
+#' @param mean_interval numeric: rolling mean time interval (min)
+#'
+#' @importFrom dplyr mutate
+#'
+#' @return list with measurement_edit data frame and correction_period data frame
+#' @export
+data_prepare_edit_and_correction <- function(
+    measurement_edit,
+    correction_type,
+    sensor_id,
+    start_date,
+    end_date,
+    author_id,
+    comment,
+    offset = NULL,
+    drift = NULL,
+    delete_threshold = NULL,
+    set_value = NULL,
+    median_interval = NULL,
+    loess_span = NULL,
+    hampel_interval = NULL,
+    hampel_value = NULL,
+    mean_interval = NULL,
+    tsclean_iteration = NULL
+) {
+
+  if (correction_type == 1) { # offset
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = offset,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 2) { # drift
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = drift,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 3) { # delete
+
+    correction_period <- data_get_deleted_periods(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      delete_threshold = delete_threshold,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 4) { # set value
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = set_value,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 5) { # Median filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = median_interval,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 6) { # Loess filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = loess_span,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 7) { # Hampel filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = hampel_interval,
+      value2 = hampel_value,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 8) { # Mean filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = mean_interval,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 9) { # tsclean filter
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = tsclean_iteration,
+      value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  list(
+    measurement_edit = measurement_edit,
+    correction_period = correction_period %>%
+      mutate(ts_corr = as.POSIXct(Sys.time(), tz = "UTC"))
+  )
+}
+
+#' Get measurement data with applied corrections
+#'
+#' This function takes the raw measurement data and the corresponding corrections, and applies the corrections to the raw data. It performs a left join between the raw measurement data and the correction data based on the timestamp and sensor ID. The corrected value is calculated using the `coalesce` function, which returns the corrected value if it exists, or the original value if there is no correction. The resulting data frame contains the timestamp, sensor ID, and the final value after applying corrections.
+#'
+#' @param measurement_raw data.frame: raw measurement data with columns ts, sensor_id, value
+#' @param measurement_corr data.frame: correction data with columns ts, sensor_id, value
+#'
+#' @importFrom dplyr bind_rows group_by slice_tail ungroup select arrange filter
+#'
+#' @return data.frame with columns ts, sensor_id, value (corrected)
+#' @export
+data_get_measurement_edit <- function(measurement_raw, measurement_corr){
+  data <- bind_rows(
+    measurement_raw,
+    measurement_corr
+  ) %>%
+    group_by(ts, sensor_id) %>%
+    slice_tail(n = 1) %>%
+    ungroup() %>%
+    select(ts, sensor_id, value) %>%
+    filter(!is.na(value)) %>%
+    arrange(ts)
 }
 
 #' Get measurement missing period by interval
@@ -134,7 +356,7 @@ data_update_measurement <- function(con, data, sensor, author, correction_type, 
 #' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
 #' @param interval_time character: interval in format '1 day', '1 hour', '1 minute', '1 second'
 #'
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#' @importFrom DBI dbGetQuery sqlInterpolate dbQuoteIdentifier SQL
 #'
 #' @return data.frame
 #' @export
@@ -178,7 +400,6 @@ data_get_missing_period <- function(con, sensor_id, start_date, end_date, interv
             time_start;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
   data <- dbGetQuery(con, query)
-  dbDisconnect(con)
   return(data)
 }
 
@@ -190,7 +411,7 @@ data_get_missing_period <- function(con, sensor_id, start_date, end_date, interv
 #' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
 #' @param interval_time character: interval in format '1 day', '1 hour', '1 minute', '1 second'
 #'
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate dbQuoteIdentifier SQL
+#' @importFrom DBI dbGetQuery sqlInterpolate dbQuoteIdentifier SQL
 #'
 #' @return data.frame
 #' @export
@@ -218,67 +439,27 @@ data_get_available_period <- function(con, sensor_id, start_date, end_date, inte
           	time_start;"
   query <- sqlInterpolate(con, sql, sensor_id = sensor_id, start_date = start_date, end_date = end_date, interval_time = interval_time)
   data <- dbGetQuery(con, query)
-  dbDisconnect(con)
   return(data)
 }
 
-#' Get min and max date from measurement table
+#' Filter value with Hampel filter
 #'
-#' @param con PqConnection: database connection
-#' @param station_id integer: station id
+#' @param x POSIXct: date time date in format 'YYYY-MM-DD'
+#' @param k number: Hampel factor threshold
 #'
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
+#' @importFrom stats median mad
 #'
-#' @return data.frame
+#' @return value
 #' @export
-#' @examples
-#' con <- db_con()
-#' get_min_max_date(con, 3)
-get_min_max_date <- function(con, station_id){
-  sql <- "SELECT
-            MIN(timestamp) AS min_date,
-            MAX(timestamp) AS max_date
-    FROM measurement
-    WHERE sensor_id IN (SELECT id FROM sensor WHERE station_id = ?station_id);"
-  query <- sqlInterpolate(con, sql, station_id = station_id)
-  data <- dbGetQuery(con, query)
-  dbDisconnect(con)
-  return(data)
-}
+data_hampel_filter <- function(x, k = 3) {
+  med <- median(x)
+  mad_val <- mad(x, constant = 1.4826)
 
-#' Get all the station from database
-#'
-#' @param con PqConnection: database connection
-#'
-#' @importFrom DBI dbGetQuery dbDisconnect
-#'
-#' @return data.frame
-#' @export
-#' @examples
-#' con <- db_con()
-#' data_get_stations(con)
-data_get_stations <- function(con){
-  sql <- "SELECT * FROM station;"
-  data <- dbGetQuery(con, sql)
-  dbDisconnect(con)
-  return(data)
-}
+  x0 <- x[length(x)] # Last interval point = present
 
-#' Get all the intervention from the database
-#'
-#' @param con PqConnection: database connection
-#' @param station_id integer: station id
-#' @param start_date POSIXct: start date in format 'YYYY-MM-DD'
-#' @param end_date POSIXct: end date in format 'YYYY-MM-DD'
-#'
-#' @importFrom DBI dbGetQuery dbDisconnect sqlInterpolate
-#'
-#' @return data.frame
-#' @export
-data_get_intervention <- function(con, station_id, start_date, end_date){
-  sql <- "SELECT * FROM intervention WHERE station_id = ?station_id AND timestamp >= ?start_date AND timestamp <= ?end_date;"
-  query <- sqlInterpolate(con, sql, station_id = station_id, start_date = start_date, end_date = end_date)
-  data <- dbGetQuery(con, query)
-  dbDisconnect(con)
-  return(data)
+  if (mad_val < 1e-6) {
+    return(x0)   # mad_val too small to compare
+  }
+
+  if (abs(x0 - med) > k * mad_val) med else x0
 }
