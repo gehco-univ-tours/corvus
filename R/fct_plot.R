@@ -84,11 +84,12 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
   colnames(all_series) <- names(series_list)
 
   # create dygraph
-  dy <- dygraphs::dygraph(all_series) %>%
+  dy <- dygraphs::dygraph(
+      all_series) %>%
     dygraphs::dyCrosshair(direction = "vertical") %>%
     dygraphs::dyRangeSelector() %>%
-    dygraphs::dyOptions(useDataTimezone = TRUE)
-
+    dygraphs::dyOptions(useDataTimezone = TRUE,
+                        retainDateWindow = TRUE)
 
   # add series
   if ("add" %in% colnames(all_series)) {

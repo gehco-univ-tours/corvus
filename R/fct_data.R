@@ -457,10 +457,9 @@ data_hampel_filter <- function(x, k = 3) {
 
   x0 <- x[length(x)] # Last interval point = present
 
-  if (mad_val < 1e-9) {
+  if (mad_val < 1e-6) {
     return(x0)   # mad_val too small to compare
   }
 
   if (abs(x0 - med) > k * mad_val) med else x0
 }
-

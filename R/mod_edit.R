@@ -208,6 +208,7 @@ mod_edit_server <- function(id, con, r_globals){
       ),
       update_plot = 0,
       trigger_checkbox_update = 0,
+      data_ready = FALSE,
       dygraph = NULL,
       fieldwork_table = NULL,
       start_or_end = NULL,
@@ -319,6 +320,9 @@ mod_edit_server <- function(id, con, r_globals){
     #### Plot bttn ####
 
     observeEvent(input$plot_bttn, {
+
+      r_locals$data_ready <- FALSE
+
       req(r_locals$sensor_id_tocorr)
       req(r_locals$sensor_id_add)
 
@@ -375,6 +379,8 @@ mod_edit_server <- function(id, con, r_globals){
       # reset measurement edit
       r_locals$data$measurement_edit = NULL
 
+      r_locals$data_ready <- TRUE
+
       r_locals$trigger_checkbox_update <- r_locals$trigger_checkbox_update +1
 
       print("Plot bttn")
@@ -388,8 +394,18 @@ mod_edit_server <- function(id, con, r_globals){
                       input$checkbox_measurement_filter,
                       input$checkbox_measurement_add,
                       input$checkbox_measurement_edit,
+                      input$checkbox_fieldwork,
+                      input$checkbox_deleted_period,
                       r_locals$trigger_checkbox_update
                       ), ignoreInit = TRUE, {
+
+                        req(r_locals$data_ready)
+
+                        req(
+                          !is.null(input$checkbox_measurement_raw),
+                          !is.null(input$checkbox_measurement_corr),
+                          !is.null(input$checkbox_fieldwork)
+                        )
 
       r_locals$checkbox_graph$measurement_raw <- input$checkbox_measurement_raw
       r_locals$checkbox_graph$measurement_corr <- input$checkbox_measurement_corr
@@ -397,21 +413,10 @@ mod_edit_server <- function(id, con, r_globals){
       r_locals$checkbox_graph$measurement_add <- input$checkbox_measurement_add
       r_locals$checkbox_graph$measurement_edit <- input$checkbox_measurement_edit
 
-      r_locals$update_plot = r_locals$update_plot + 1
-
-      print("Checkboxes")
-    })
-
-
-    #### Deleted period and fieldwork ####
-
-    observeEvent(list(input$checkbox_fieldwork,
-                      input$checkbox_deleted_period), ignoreInit = TRUE, {
-
       r_locals$checkbox_graph$fieldwork <- input$checkbox_fieldwork
       r_locals$checkbox_graph$deleted_period <- input$checkbox_deleted_period
 
-      if(r_locals$checkbox_graph$fieldwork){
+      if(isTRUE(r_locals$checkbox_graph$fieldwork)){
         r_locals$fieldwork_table <- DT::datatable(
           data = r_locals$data$fieldwork
         )
@@ -419,14 +424,24 @@ mod_edit_server <- function(id, con, r_globals){
         r_locals$fieldwork_table <- NULL
       }
 
-      print("Deleted period or fieldworks")
+      r_locals$update_plot = r_locals$update_plot + 1
+
+      print("Checkboxes")
+    })
+
+    #### Save date zoom range ####
+
+    observeEvent(input$plot_date_window, ignoreInit = TRUE, {
+
+      r_locals$date_zoom_range <- input$plot_date_window
     })
 
     #### Update plot ####
 
     observeEvent(r_locals$update_plot, {
       req(r_locals$data$measurement_raw, r_locals$data$measurement_corr,
-          r_locals$data$measurement_filter, r_locals$data$measurement_add)
+          r_locals$data$measurement_filter, r_locals$data$measurement_add,
+          r_locals$data$fieldwork, r_locals$data$deleted)
 
       r_locals$dygraph <- plot_dygraph(
         data = r_locals$data,
@@ -529,14 +544,6 @@ mod_edit_server <- function(id, con, r_globals){
     output$fieldwork_table <-  DT::renderDataTable(
       r_locals$fieldwork_table
     )
-
-    #### Date slider ####
-
-    #### Marker plot ####
-
-    #### Plot raw data bttn ####
-
-    #### Plot plot_field bttn ####
 
     #### Edition mode UI ####
     observeEvent(input$edition, {
@@ -764,7 +771,7 @@ mod_edit_server <- function(id, con, r_globals){
       }
       if (input$correction == 5){ # median filter
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value = slide_index_dbl(
+          dplyr::mutate(value = slider::slide_index_dbl(
             value,
             .i = ts,
             .f = median,
@@ -781,33 +788,18 @@ mod_edit_server <- function(id, con, r_globals){
       }
       if (input$correction == 7){ # Hampel filter
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          mutate(
-            value = slide_index_dbl(
-              value,
-              ts,
-              .before = seconds(input$hampel_interval*60),
-              .after = 0,  # causal
-              .f = function(x) {
-                med <- median(x)
-                mad_val <- max(mad(x, constant = 1.4826), 1e-6)
-                x0 <- x[length(x)]
-
-                if (abs(x0 - med) > 3 * mad_val) med else x0
-              }
-            )
-          )
-          # dplyr::mutate(value = slide_index_dbl(
-          #   value,
-          #   .i = ts,
-          #   .f = ~ data_hampel_filter (.x, k = input$hampel_value),
-          #   .before = seconds(input$hampel_interval*60),
-          #   .after = seconds(input$hampel_interval*60),
-          #   complete = FALSE
-          # ))
+          dplyr::mutate(value = slider::slide_index_dbl(
+            value,
+            .i = ts,
+            .f = ~ data_hampel_filter (.x, k = input$hampel_value),
+            .before = seconds(input$hampel_interval*60),
+            .after = seconds(input$hampel_interval*60),
+            complete = FALSE
+          ))
       }
       if (input$correction == 8){ # mean filter
         r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
-          dplyr::mutate(value = slide_index_dbl(
+          dplyr::mutate(value = slider::slide_index_dbl(
             value,
             .i = ts,
             .f = mean,
