@@ -4,7 +4,14 @@
 \alias{plot_dygraph}
 \title{Create a dygraph plot for the given data and parameters.}
 \usage{
-plot_dygraph(data, parameter_tocorr_name, parameter_add_name, display_opts)
+plot_dygraph(
+  data,
+  parameter_tocorr_name,
+  parameter_add_name,
+  y_title,
+  y_title_add,
+  display_opts
+)
 }
 \arguments{
 \item{data}{A list containing the measurement data to be plotted.}
@@ -12,6 +19,10 @@ plot_dygraph(data, parameter_tocorr_name, parameter_add_name, display_opts)
 \item{parameter_tocorr_name}{The name of the parameter to be corrected.}
 
 \item{parameter_add_name}{The name of the additional parameter to be plotted (optional).}
+
+\item{y_title}{text the parameter name and unit.}
+
+\item{y_title_add}{text additionnal parameter name and unit.}
 
 \item{display_opts}{A list of boolean values indicating which series to display (raw, corrected, additional).}
 }

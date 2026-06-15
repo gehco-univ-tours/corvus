@@ -143,6 +143,7 @@ mod_edit_ui <- function(id){
 #' @importFrom shiny selectInput actionButton sliderInput verbatimTextOutput
 #' @importFrom shiny renderPrint req reactiveValues checkboxInput
 #' @importFrom shiny updateCheckboxInput textAreaInput numericInput
+#' @importFrom shiny updateTextAreaInput
 #' @importFrom dygraphs renderDygraph dyEvent dyShading
 #' @importFrom shinyjs disable enable hide show
 #' @importFrom dplyr mutate filter arrange group_by summarise transmute
@@ -447,6 +448,10 @@ mod_edit_server <- function(id, con, r_globals){
         data = r_locals$data,
         parameter_tocorr_name = r_locals$parameter_tocorr_name,
         parameter_add_name = r_locals$parameter_add_name,
+        y_title = paste0(r_locals$parameter_tocorr_name, ' (',
+                         r_locals$parameter_tocorr_unit, ')'),
+        y_title_add = paste0(r_locals$parameter_add_name, ' (',
+                             r_locals$parameter_add_unit, ')'),
         display_opts = r_locals$checkbox_graph
       )
 
@@ -482,12 +487,21 @@ mod_edit_server <- function(id, con, r_globals){
       # deleted periods (red zone)
       if (isTRUE(r_locals$checkbox_graph$deleted_period) && !is.null(r_locals$data$deleted)) {
         for (i in seq_len(nrow(r_locals$data$deleted))) {
-          plot <- plot %>%
-            dygraphs::dyShading(
-              from = r_locals$data$deleted$ts_start[i],
-              to   = r_locals$data$deleted$ts_end[i],
-              color = "rgba(255,0,0,0.3)"
-            )
+          start <- r_locals$data$deleted$ts_start[i]
+          end   <- r_locals$data$deleted$ts_end[i]
+
+          if (start == end) {
+            plot <- plot %>%
+              dygraphs::dyEvent(start, label = "", color = "red",
+                                strokePattern = "solid")
+          } else {
+            plot <- plot %>%
+              dygraphs::dyShading(
+                from = start,
+                to   = end,
+                color = "rgba(255,0,0,0.3)"
+              )
+          }
         }
       }
 
@@ -859,6 +873,8 @@ mod_edit_server <- function(id, con, r_globals){
         correction_period = prepared$correction_period
       )
 
+
+      updateTextAreaInput(session, inputId = "comment", value = "")
       r_locals$data$measurement_edit <- NULL
       r_locals$data$measurement_corr <- db_get_measurement_corr(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])
       r_locals$data$measurement_filter <- db_get_measurement_filter(con, r_locals$sensor_id_tocorr, input$date[1], input$date[2])

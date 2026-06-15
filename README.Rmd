@@ -20,6 +20,13 @@ knitr::opts_chunk$set(
 
 corvus is a measurement stations managing application. The app is built with the {shiny} package and uses a PostgreSQL database with the TimescaleDB extension. The app is designed to manage measurement stations and their time series data. The app allows to insert, update and delete data. The app also allows to visualize the data with different plots, make correction and validation.
 
+## Todo
+
+- Add an export module
+- Be able to remove a correction (from cascade from the table)
+- Add fieldwork module
+- Add samping
+
 ## Installation
 
 ### Install package from GitHub

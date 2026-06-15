@@ -3,14 +3,17 @@
 #' @param data A list containing the measurement data to be plotted.
 #' @param parameter_tocorr_name The name of the parameter to be corrected.
 #' @param parameter_add_name The name of the additional parameter to be plotted (optional).
+#' @param y_title text the parameter name and unit.
+#' @param y_title_add text additionnal parameter name and unit.
 #' @param display_opts A list of boolean values indicating which series to display (raw, corrected, additional).
 #'
 #' @importFrom xts xts
-#' @importFrom dygraphs dygraph dyRangeSelector dySeries dyAxis dyCrosshair dyOptions
+#' @importFrom dygraphs dygraph dyRangeSelector dySeries dyAxis dyCrosshair dyOptions dyAxis
 #'
 #' @return A dygraph object that can be rendered in a Shiny app or R Markdown document.
 #' @export
-plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, display_opts){
+plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name,
+                         y_title, y_title_add, display_opts){
 
   no_data <- (
     is.null(data$measurement_raw) ||
@@ -85,7 +88,7 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
 
   # create dygraph
   dy <- dygraphs::dygraph(
-      all_series) %>%
+      all_series, ylab = y_title) %>%
     dygraphs::dyCrosshair(direction = "vertical") %>%
     dygraphs::dyRangeSelector() %>%
     dygraphs::dyOptions(useDataTimezone = TRUE,
@@ -97,7 +100,8 @@ plot_dygraph <- function(data, parameter_tocorr_name, parameter_add_name, displa
       dygraphs::dySeries("add",
                          label = parameter_add_name,
                          color = "blue",
-                         axis = "y2")
+                         axis = "y2") %>%
+      dygraphs::dyAxis("y2", label = y_title_add)
   }
 
   if ("raw" %in% colnames(all_series)) {

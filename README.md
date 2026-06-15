@@ -4,6 +4,7 @@
 # corvus <a href=""><img src="man/figures/logo.png" align="right" height="70" /></a>
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 corvus is a measurement stations managing application. The app is built
@@ -12,6 +13,13 @@ TimescaleDB extension. The app is designed to manage measurement
 stations and their time series data. The app allows to insert, update
 and delete data. The app also allows to visualize the data with
 different plots, make correction and validation.
+
+## Todo
+
+- Add an export module
+- Be able to remove a correction (from cascade from the table)
+- Add fieldwork module
+- Add samping
 
 ## Installation
 
@@ -23,7 +31,7 @@ remotes::install_github("https://github.com/gehco-univ-tours/corvus.git")
 
 ### Install PostgreSQL timescaleDB database
 
-- Install PostreSQL lastest version compatible with TimescaleDB
+- Install PostgreSQL latest version compatible with TimescaleDB
   extension. See the version compatibility in [TimescaleDB install
   documentation](https://docs.timescale.com/self-hosted/latest/install/)
   for your operating system. The PostgreSQL version for each operating

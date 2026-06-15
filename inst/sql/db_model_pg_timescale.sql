@@ -137,3 +137,27 @@ CREATE VIEW measurement_data AS (
     JOIN parameter ON sensor.parameter_id = parameter.id
     JOIN station ON sensor.station_id = station.id)
     ORDER BY ts ASC;
+
+-- View to get corr data and raw not need to be corrected
+CREATE VIEW measurement_raw_corr AS
+SELECT
+    ts,
+    sensor_id,
+    value,
+    'corr' AS source
+FROM measurement_corr
+
+UNION ALL
+
+SELECT
+    m.ts,
+    m.sensor_id,
+    m.value,
+    'raw' AS source
+FROM measurement m
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM measurement_corr mc
+    WHERE mc.ts = m.ts
+      AND mc.sensor_id = m.sensor_id
+);

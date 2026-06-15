@@ -111,7 +111,7 @@ data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
       ts_end,
       correction_type = correction_type,
       value1 = delete_threshold,
-      value2 = NULL,
+      value2 = NA_real_,
       comment = comment
     )
   return(data)
