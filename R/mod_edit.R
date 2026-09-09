@@ -178,7 +178,7 @@ mod_edit_server <- function(id, con, r_globals){
       station_parameters = NULL,
       parameter_tocorr = NULL,
       parameter_tocorr_name = NULL,
-      paramter_tocorr_unit = NULL,
+      parameter_tocorr_unit = NULL,
       parameter_add = NULL,
       parameter_add_name = NULL,
       parameter_add_unit = NULL,
