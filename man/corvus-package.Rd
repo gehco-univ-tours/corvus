@@ -13,5 +13,10 @@ Measurement stations managing R shiny application.
 \author{
 \strong{Maintainer}: Louis Manière \email{louis.maniere@univ-tours.fr}
 
+Authors:
+\itemize{
+  \item Louis Manière \email{louis.maniere@univ-tours.fr}
+}
+
 }
 \keyword{internal}

@@ -20,4 +20,5 @@ data.frame
 }
 \description{
 This function returns the measurements based on the sensor id and the date range.
+Return corrected data if possible, else it return raw ones.
 }

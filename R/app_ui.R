@@ -19,6 +19,7 @@ app_ui <- function(request) {
         ),
       tabPanel("Stations", mod_stations_ui("stations_1")),
       tabPanel("Edition", mod_edit_ui("edit_1")),
+      tabPanel("Download", mod_download_ui("download_1")),
       tabPanel("Database", mod_database_ui("database_1"))
     )
   )

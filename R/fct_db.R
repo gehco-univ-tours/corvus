@@ -350,6 +350,7 @@ db_get_measurement_corr <- function(con, sensor_id, min_date, max_date){
 #' Get cleaned data with correction applied
 #'
 #' This function returns the measurements based on the sensor id and the date range.
+#' Return corrected data if possible, else it return raw ones.
 #'
 #' @param con PqConnection: database connection
 #' @param sensor_id integer: sensor id
@@ -619,6 +620,3 @@ db_apply_edit_with_correction <- function(con, correction_type, measurement_edit
 
   })
 }
-
-
-

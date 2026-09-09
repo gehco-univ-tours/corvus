@@ -39,125 +39,152 @@ export(download_gb)
 export(params_get_db_actions)
 export(plot_dygraph)
 export(run_app)
-importFrom(DBI,SQL)
-importFrom(DBI,dbBegin)
-importFrom(DBI,dbClearResult)
-importFrom(DBI,dbCommit)
-importFrom(DBI,dbConnect)
-importFrom(DBI,dbDisconnect)
-importFrom(DBI,dbExecute)
-importFrom(DBI,dbGetQuery)
-importFrom(DBI,dbGetRowsAffected)
-importFrom(DBI,dbQuoteIdentifier)
-importFrom(DBI,dbRollback)
-importFrom(DBI,dbSendQuery)
-importFrom(DBI,dbWriteTable)
-importFrom(DBI,sqlInterpolate)
-importFrom(DT,dataTableOutput)
-importFrom(DT,datatable)
-importFrom(DT,renderDataTable)
+importFrom(DBI,
+  SQL,
+  dbBegin,
+  dbClearResult,
+  dbCommit,
+  dbConnect,
+  dbDisconnect,
+  dbExecute,
+  dbGetQuery,
+  dbGetRowsAffected,
+  dbQuoteIdentifier,
+  dbRollback,
+  dbSendQuery,
+  dbWriteTable,
+  sqlInterpolate
+)
+importFrom(DT,
+  dataTableOutput,
+  datatable,
+  renderDataTable
+)
 importFrom(RPostgres,Postgres)
 importFrom(bslib,bs_theme)
-importFrom(curl,curl_download)
-importFrom(curl,new_handle)
-importFrom(dplyr,across)
-importFrom(dplyr,arrange)
-importFrom(dplyr,bind_rows)
-importFrom(dplyr,distinct)
-importFrom(dplyr,filter)
-importFrom(dplyr,first)
-importFrom(dplyr,group_by)
-importFrom(dplyr,lag)
-importFrom(dplyr,last)
-importFrom(dplyr,mutate)
-importFrom(dplyr,mutate_all)
-importFrom(dplyr,rename)
-importFrom(dplyr,rename_all)
-importFrom(dplyr,select)
-importFrom(dplyr,slice_tail)
-importFrom(dplyr,summarise)
-importFrom(dplyr,transmute)
-importFrom(dplyr,ungroup)
-importFrom(dygraphs,dyAxis)
-importFrom(dygraphs,dyCrosshair)
-importFrom(dygraphs,dyEvent)
-importFrom(dygraphs,dyOptions)
-importFrom(dygraphs,dyRangeSelector)
-importFrom(dygraphs,dySeries)
-importFrom(dygraphs,dyShading)
-importFrom(dygraphs,dygraph)
-importFrom(dygraphs,dygraphOutput)
-importFrom(dygraphs,renderDygraph)
+importFrom(curl,
+  curl_download,
+  new_handle
+)
+importFrom(dplyr,
+  across,
+  arrange,
+  bind_rows,
+  distinct,
+  filter,
+  first,
+  group_by,
+  lag,
+  last,
+  mutate,
+  mutate_all,
+  rename,
+  rename_all,
+  select,
+  slice_tail,
+  summarise,
+  transmute,
+  ungroup
+)
+importFrom(dygraphs,
+  dyAxis,
+  dyCrosshair,
+  dyEvent,
+  dyOptions,
+  dyRangeSelector,
+  dySeries,
+  dyShading,
+  dygraph,
+  dygraphOutput,
+  renderDygraph
+)
 importFrom(forecast,tsclean)
 importFrom(glue,glue)
-importFrom(golem,activate_js)
-importFrom(golem,add_resource_path)
-importFrom(golem,bundle_resources)
-importFrom(golem,favicon)
-importFrom(golem,with_golem_options)
-importFrom(leaflet,addMarkers)
-importFrom(leaflet,addScaleBar)
-importFrom(leaflet,addTiles)
-importFrom(leaflet,fitBounds)
-importFrom(leaflet,labelOptions)
-importFrom(leaflet,leaflet)
-importFrom(leaflet,leafletOutput)
-importFrom(leaflet,renderLeaflet)
-importFrom(leaflet,scaleBarOptions)
-importFrom(lubridate,dmy_hms)
-importFrom(lubridate,hm)
-importFrom(lubridate,seconds)
-importFrom(lubridate,with_tz)
-importFrom(lubridate,ymd)
-importFrom(lubridate,ymd_hm)
-importFrom(lubridate,ymd_hms)
+importFrom(golem,
+  activate_js,
+  add_resource_path,
+  bundle_resources,
+  favicon,
+  with_golem_options
+)
+importFrom(leaflet,
+  addMarkers,
+  addScaleBar,
+  addTiles,
+  fitBounds,
+  labelOptions,
+  leaflet,
+  leafletOutput,
+  renderLeaflet,
+  scaleBarOptions
+)
+importFrom(lubridate,
+  dmy_hms,
+  hm,
+  seconds,
+  with_tz,
+  ymd,
+  ymd_hm,
+  ymd_hms
+)
 importFrom(magrittr,"%>%")
 importFrom(rlang,":=")
-importFrom(shiny,NS)
-importFrom(shiny,actionButton)
-importFrom(shiny,addResourcePath)
-importFrom(shiny,checkboxInput)
-importFrom(shiny,column)
-importFrom(shiny,div)
-importFrom(shiny,fluidPage)
-importFrom(shiny,fluidRow)
-importFrom(shiny,img)
-importFrom(shiny,moduleServer)
-importFrom(shiny,navbarPage)
-importFrom(shiny,numericInput)
-importFrom(shiny,observeEvent)
-importFrom(shiny,reactiveValues)
-importFrom(shiny,renderPrint)
-importFrom(shiny,renderUI)
-importFrom(shiny,req)
-importFrom(shiny,selectInput)
-importFrom(shiny,shinyApp)
-importFrom(shiny,sliderInput)
-importFrom(shiny,tabPanel)
-importFrom(shiny,tagList)
-importFrom(shiny,tags)
-importFrom(shiny,textAreaInput)
-importFrom(shiny,textInput)
-importFrom(shiny,uiOutput)
-importFrom(shiny,updateCheckboxInput)
-importFrom(shiny,updateSelectInput)
-importFrom(shiny,updateTextAreaInput)
-importFrom(shiny,verbatimTextOutput)
-importFrom(shinyWidgets,switchInput)
-importFrom(shinyWidgets,timeInput)
+importFrom(shiny,
+  NS,
+  actionButton,
+  addResourcePath,
+  checkboxInput,
+  column,
+  div,
+  fluidPage,
+  fluidRow,
+  img,
+  moduleServer,
+  navbarPage,
+  numericInput,
+  observeEvent,
+  reactiveValues,
+  renderPrint,
+  renderUI,
+  req,
+  selectInput,
+  shinyApp,
+  sliderInput,
+  tabPanel,
+  tagList,
+  tags,
+  textAreaInput,
+  textInput,
+  uiOutput,
+  updateCheckboxInput,
+  updateSelectInput,
+  updateTextAreaInput,
+  verbatimTextOutput
+)
+importFrom(shinyWidgets,
+  switchInput,
+  timeInput
+)
 importFrom(shinybusy,add_busy_bar)
-importFrom(shinyjs,disable)
-importFrom(shinyjs,enable)
-importFrom(shinyjs,hide)
-importFrom(shinyjs,show)
-importFrom(shinyjs,useShinyjs)
+importFrom(shinyjs,
+  click,
+  disable,
+  enable,
+  hide,
+  show,
+  useShinyjs
+)
 importFrom(slider,slide_index_dbl)
-importFrom(stats,mad)
-importFrom(stats,median)
-importFrom(stats,predict)
-importFrom(stats,setNames)
+importFrom(stats,
+  mad,
+  median,
+  predict,
+  setNames
+)
 importFrom(stringr,str_remove)
 importFrom(tidyselect,everything)
-importFrom(utils,read.csv)
-importFrom(utils,write.table)
+importFrom(utils,
+  read.csv,
+  write.table
+)
 importFrom(xts,xts)
