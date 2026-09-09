@@ -193,7 +193,7 @@ mod_download_server <- function(id, con, r_globals){
        if (input$data_level=="Raw"){
         r_locals$data_download <- db_get_measurement_raw(con, r_locals$sensor_id_to_download, input$dates[1], input$dates[2])
       } else if (input$data_level == "corrected"){
-        r_locals$data_download <- db_get_measurement_corr(con, r_locals$sensor_id_to_download, input$dates[1], input$dates[2])
+        r_locals$data_download <- db_get_measurement_raw_corr(con, r_locals$sensor_id_to_download, input$dates[1], input$dates[2])
       }
 
       if(is.null(r_locals$data_download) || nrow(r_locals$data_download)==0){
@@ -212,7 +212,8 @@ mod_download_server <- function(id, con, r_globals){
 
       r_locals$download_name <- gsub(" ", "_",
                                      paste0("LRX_", r_locals$station_code, "_", r_locals$parameter_to_download_name, "_",
-                                     format(input$dates[1], "%Y%m%d"), "_", format(input$dates[2], "%Y%m%d"), ".csv"))
+                                            input$data_level, "_", format(input$dates[1], "%Y%m%d"), "_",
+                                            format(input$dates[2], "%Y%m%d"), ".csv"))
 
       # create click when condition are checked
       shinyjs::click("download")
