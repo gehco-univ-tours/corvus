@@ -16,10 +16,32 @@ different plots, make correction and validation.
 
 ## Todo
 
-- Add an export module
 - Be able to remove a correction (from cascade from the table)
-- Add fieldwork module
-- Add samping
+- Add qualification when editing (see chartre qualité de l’hydrométrie)
+  to edit different products :
+  - first =\> raw data =\> status = “non qualify”
+  - corrected data = visual inspection and manual correction by
+    fieldwork knowledge.
+    - Correction apply to offset, drift, remove obvious ouliers or
+      sensor failure range.
+    - Data could be interpolate if remove on short period and if there
+      is no reason to see trend changes.
+    - Data status are then “controled and corrected” and with a quality
+      flag
+  - filtered data =\> apply filter and/or smoothing algorithms to
+    identify outliers, remove noises, smoothing sensor uncertainty. It
+    is only on “controled and corrected” data. Data status are then
+    “filtered and smoothing data”. Data could be interpolate at this
+    stage.
+- Add quality flag :
+  - good
+  - uncertain
+  - non qualify
+- Add fieldwork add module
+- Add sampling
+- identify fieldwork when selected in table
+- edit = set below/above value
+- PI drift
 
 ## Installation
 
