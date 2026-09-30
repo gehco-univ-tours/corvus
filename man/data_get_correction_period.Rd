@@ -19,9 +19,9 @@ data_get_correction_period(
 
 \item{sensor_id}{integer: sensor id}
 
-\item{value1}{numeric: tool parameter1}
+\item{value1}{text: tool parameter1}
 
-\item{value2}{numeric: tool parameter2}
+\item{value2}{text: tool parameter2}
 
 \item{author_id}{integer: author id}
 

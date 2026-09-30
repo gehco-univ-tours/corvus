@@ -21,7 +21,9 @@ data_prepare_edit_and_correction(
   hampel_interval = NULL,
   hampel_value = NULL,
   mean_interval = NULL,
-  tsclean_iteration = NULL
+  tsclean_iteration = NULL,
+  equation = NULL,
+  range_apply_equation = NULL
 )
 }
 \arguments{

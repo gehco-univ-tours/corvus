@@ -554,9 +554,9 @@ db_update_measurement_edit <- function(con, correction_type, dataframe){
                        temporary = TRUE, row.names = FALSE
     )
 
-    if (correction_type %in% c(1,2,3,4)){
+    if (correction_type %in% c(1,2,3,4,10)){
       measurement_table <- "measurement_corr"
-    } else {
+    } else if (correction_type %in% c(5,6,7,8,9)) {
       measurement_table <- "measurement_filter"
     }
 
@@ -585,7 +585,8 @@ db_update_measurement_edit <- function(con, correction_type, dataframe){
 
 #' Apply measurement edit and correction periods in a single transaction
 #'
-#' This function applies both measurement edits and correction periods in a single database transaction. If any part of the process fails, the entire transaction is rolled back to maintain data integrity.
+#' This function applies both measurement edits and correction periods in a single database transaction.
+#' If any part of the process fails, the entire transaction is rolled back to maintain data integrity.
 #'
 #' @param con DBI Connection
 #' @param correction_type int Define correction type applied to raw data

@@ -162,6 +162,7 @@ importFrom(shiny,
   verbatimTextOutput
 )
 importFrom(shinyWidgets,
+  numericRangeInput,
   switchInput,
   timeInput
 )

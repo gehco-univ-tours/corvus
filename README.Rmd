@@ -22,10 +22,10 @@ corvus is a measurement stations managing application. The app is built with the
 
 ## Todo
 
-- Add an download module
 - Be able to remove a correction (from cascade from the table)
+- Add qualification code module when editing => remove = bad quality
 - Add fieldwork add module
-- Add samping
+- Add sampling
 - identify fieldwork when selected in table
 - edit = set below/above value
 - PI drift

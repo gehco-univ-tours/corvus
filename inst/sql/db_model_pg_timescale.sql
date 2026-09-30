@@ -76,7 +76,8 @@ CREATE TABLE correction (
     ts_start TIMESTAMPTZ NOT NULL,
     ts_end TIMESTAMPTZ NOT NULL,
     correction_type INTEGER NOT NULL REFERENCES correction_type(id),
-    value DOUBLE PRECISION NOT NULL,
+    value1 VARCHAR(255) NOT NULL,
+    value2 VARCHAR(255) NOT NULL,
     comment TEXT
 );
 

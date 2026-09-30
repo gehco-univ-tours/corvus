@@ -203,11 +203,11 @@ mod_download_server <- function(id, con, r_globals){
       }
 
       r_locals$data_download <- r_locals$data_download %>%
-        select(-sensor_id) %>%
-        arrange(ts) %>%
-        rename(!!r_locals$data_download_parameter_col_name := value,
+        dplyr::select(-sensor_id) %>%
+        dplyr::arrange(ts) %>%
+        dplyr::rename(!!r_locals$data_download_parameter_col_name := value,
                ts_utc = ts) %>%
-        mutate(ts_utc = as.character(format(ts_utc)))
+        dplyr:: mutate(ts_utc = as.character(format(ts_utc)))
 
 
       r_locals$download_name <- gsub(" ", "_",

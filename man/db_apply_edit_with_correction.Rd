@@ -24,5 +24,6 @@ db_apply_edit_with_correction(
 character Message indicating the result of the operation
 }
 \description{
-This function applies both measurement edits and correction periods in a single database transaction. If any part of the process fails, the entire transaction is rolled back to maintain data integrity.
+This function applies both measurement edits and correction periods in a single database transaction.
+If any part of the process fails, the entire transaction is rolled back to maintain data integrity.
 }

@@ -152,6 +152,7 @@ mod_edit_ui <- function(id){
 #' @importFrom stats predict
 #' @importFrom DT datatable renderDataTable
 #' @importFrom forecast tsclean
+#' @importFrom shinyWidgets numericRangeInput
 mod_edit_server <- function(id, con, r_globals){
   moduleServer(id, function(input, output, session){
     ns <- session$ns
@@ -744,6 +745,19 @@ mod_edit_server <- function(id, con, r_globals){
         output$value_edit2_ui <- renderUI({
           NULL
         })
+      } else if (input$correction == 10){ # equation correction
+        output$value_edit_ui <- renderUI({
+          textInput(inputId = ns("equation"),
+                    label = "Equation (x = parameter value like 0.0043*x^2+0.4909*x+3.5875)",
+                    value = "")
+        })
+        output$value_edit2_ui <- renderUI({
+          shinyWidgets::numericRangeInput(
+            inputId = ns("range_apply_equation"),
+            label = "Apply equation on value range",
+            value = NULL
+          )
+        })
       } else {
         output$value_edit_ui <- renderUI({
           NULL
@@ -822,12 +836,28 @@ mod_edit_server <- function(id, con, r_globals){
             .complete = FALSE
           ))
       }
-
       if (input$correction == 9){ # tsclean filter
         ts_data <- ts(r_locals$data$measurement_edit$value, frequency = 1)
         r_locals$data$measurement_edit$value <- as.numeric(tsclean(ts_data,
                                                                    replace.missing = FALSE,
                                                                    iterate = input$tsclean_iteration))
+      }
+      if (input$correction == 10){ # equation correction
+        f <- tryCatch(
+          eval(parse(text = paste0("function(x) ", input$equation))),
+          error = function(e) NULL
+        )
+
+        if (is.null(f)) {
+          showNotification(
+            "Équation invalide",
+            type = "error"
+          )
+          return()
+        }
+        r_locals$data$measurement_edit <- r_locals$data$measurement_edit %>%
+          dplyr::filter(value >= input$range_apply_equation[1], value <= input$range_apply_equation[2]) %>%
+          dplyr::mutate(value = f(value))
       }
 
       # plot
@@ -863,7 +893,9 @@ mod_edit_server <- function(id, con, r_globals){
         hampel_interval = input$hampel_interval,
         hampel_value = input$hampel_value,
         mean_interval = input$mean_interval,
-        tsclean_iteration = input$tsclean_iteration
+        tsclean_iteration = input$tsclean_iteration,
+        equation = input$equation,
+        range_apply_equation = input$range_apply_equation
       )
 
       r_locals$userinfo$db_result <- db_apply_edit_with_correction(

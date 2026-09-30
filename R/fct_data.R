@@ -121,8 +121,8 @@ data_get_deleted_periods <- function(dataframe, sensor_id, delete_threshold,
 #'
 #' @param dataframe data.frame: data frame with ts, value columns
 #' @param sensor_id integer: sensor id
-#' @param value1 numeric: tool parameter1
-#' @param value2 numeric: tool parameter2
+#' @param value1 text: tool parameter1
+#' @param value2 text: tool parameter2
 #' @param author_id integer: author id
 #' @param correction_type integer: correction type id
 #' @param comment character: comment
@@ -198,7 +198,9 @@ data_prepare_edit_and_correction <- function(
     hampel_interval = NULL,
     hampel_value = NULL,
     mean_interval = NULL,
-    tsclean_iteration = NULL
+    tsclean_iteration = NULL,
+    equation = NULL,
+    range_apply_equation = NULL
 ) {
 
   if (correction_type == 1) { # offset
@@ -311,6 +313,19 @@ data_prepare_edit_and_correction <- function(
       sensor_id = sensor_id,
       value1 = tsclean_iteration,
       value2 = NA_real_,
+      author_id = author_id,
+      correction_type = correction_type,
+      comment = comment
+    )
+  }
+
+  if (correction_type == 10) { # equation correction
+
+    correction_period <- data_get_correction_period(
+      dataframe = measurement_edit,
+      sensor_id = sensor_id,
+      value1 = equation,
+      value2 = toString(range_apply_equation),
       author_id = author_id,
       correction_type = correction_type,
       comment = comment
